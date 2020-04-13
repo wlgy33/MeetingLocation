@@ -19,17 +19,21 @@
                 android:id="@+id/textView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
                 android:text="출발지1"
-                android:textSize="25dp"/>
+                android:textSize="25dp" />
 
             <TextView
                 android:id="@+id/textView2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
                 android:text="나"
-                android:textSize="20dp"
-                android:textColor="@android:color/holo_green_light"/>
+                android:textColor="@android:color/holo_green_light"
+                android:textSize="20dp" />
         </LinearLayout>
 
         <ImageButton
