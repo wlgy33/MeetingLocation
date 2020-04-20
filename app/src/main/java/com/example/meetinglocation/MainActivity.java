@@ -52,20 +52,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         host.addTab(spec);
 
         // 첫 번째 탭 화면 구현 (목적지, 상대방 정보 입력)
-        ListView listView = (ListView) findViewById(R.id.listView1);
+        ListView listView1 = (ListView) findViewById(R.id.listView1);
         Button button = (Button) findViewById(R.id.button);
 
-        AddressAdapter adapter = new AddressAdapter();
-        adapter.addItem(new AddressItem("서울시 강남구", "나"));
-        adapter.addItem(new AddressItem("서울시 용산구", "친구1"));
-        adapter.addItem(new AddressItem("서울시 송파구", "친구2"));
-        adapter.addItem(new AddressItem("서울시 서초구", "친구3"));
+        AddressAdapter adapter1 = new AddressAdapter();
+        adapter1.addItem(new AddressItem("서울시 강남구", "나"));
+        adapter1.addItem(new AddressItem("서울시 용산구", "친구1"));
+        adapter1.addItem(new AddressItem("서울시 송파구", "친구2"));
+        adapter1.addItem(new AddressItem("서울시 서초구", "친구3"));
 
-        listView.setAdapter(adapter);
+        listView1.setAdapter(adapter1);
 
         // 두 번째 화면 구현 (구글 맵 구현)
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        // 세 번째 탭 화면 구현 (목적지, 상대방 정보 입력)
+        ListView listView2 = (ListView) findViewById(R.id.listView2);
+
+        FriendsAdapter adapter2 = new FriendsAdapter();
+        adapter2.addItem(new FriendsItem("김동현", "서울시 노원구 XX아파트"));
+        adapter2.addItem(new FriendsItem("김지효", "서울시 마포구 XX아파트"));
+        adapter2.addItem(new FriendsItem("최진형", "서울시 동대문구 XX아파트"));
+        adapter2.addItem(new FriendsItem("배인석", "서울시 송파구 XX아파트"));
+
+        listView2.setAdapter(adapter2);
 
     }
 
@@ -104,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    // 두 번째 탭 화면의 지도 시작지점(서울)
     @Override
     public void onMapReady(final GoogleMap googleMap) {
         map = googleMap;
@@ -120,4 +132,38 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         map.animateCamera(CameraUpdateFactory.zoomTo(10));
     }
 
+    // 세 번째 탭 화면의 리스트 뷰 구현
+    class FriendsAdapter extends BaseAdapter {
+        ArrayList<FriendsItem> items = new ArrayList<FriendsItem>();
+
+        @Override
+        public int getCount() {
+            return items.size();
+        }
+
+        public void addItem(FriendsItem item) {
+            items.add(item);
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            FriendsItemView view = new FriendsItemView(getApplicationContext());
+
+            FriendsItem item = items.get(position);
+            view.setName(item.getName());
+            view.setAddress(item.getAddress());
+
+            return view;
+        }
+    }
 }
