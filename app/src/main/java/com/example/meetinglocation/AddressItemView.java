@@ -40,4 +40,5 @@ public class AddressItemView extends LinearLayout {
         textView2.setText(name);
     }
 
+
 }
