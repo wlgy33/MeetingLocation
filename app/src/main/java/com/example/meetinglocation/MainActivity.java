@@ -6,11 +6,15 @@ import androidx.core.content.res.ResourcesCompat;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TabHost;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -24,8 +28,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+    // 탭 1의 위젯 변수
+    EditText input_theme;
+    EditText input_address;
+    EditText input_name;
+    Button add_friend_btn;
+    AddressAdapter adapter1;
+    TextView initializer;
 
+    // 탭 2의 위젯 변수
+    TextView detailed_info;
+    TextView detailed_path;
+    TextView share_with;
     private GoogleMap map;
+
+    // 탭 3의 위젯 변수
+    EditText input_name2;
+    EditText getInput_address2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,36 +70,81 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         spec.setContent(R.id.tab_content3);
         host.addTab(spec);
 
-        // 첫 번째 탭 화면 구현 (목적지, 상대방 정보 입력)
+        // 탭 1 화면 구현 (목적지, 상대방 정보 입력)
         ListView listView1 = (ListView) findViewById(R.id.listView1);
-        Button button = (Button) findViewById(R.id.button);
+        input_theme = (EditText) findViewById(R.id.theme);
+        add_friend_btn = (Button) findViewById(R.id.add_friend);
 
-        AddressAdapter adapter1 = new AddressAdapter();
-        adapter1.addItem(new AddressItem("서울시 강남구", "나"));
-        adapter1.addItem(new AddressItem("서울시 용산구", "친구1"));
-        adapter1.addItem(new AddressItem("서울시 송파구", "친구2"));
-        adapter1.addItem(new AddressItem("서울시 서초구", "친구3"));
-
+        // 탭 1 리스트 뷰 생성
+        adapter1 = new AddressAdapter();
+        adapter1.addItem(new AddressItem("서울시 강남구", "김지효"));
         listView1.setAdapter(adapter1);
 
-        // 두 번째 화면 구현 (구글 맵 구현)
+        // 탭 1의 리스트 아이템 클릭 시 동작 구현
+        listView1.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                AddressItem item = (AddressItem) adapter1.getItem(position);
+                Toast.makeText(getApplicationContext(), "선택 : " + item.getName(), Toast.LENGTH_LONG).show();
+            }
+        });
+
+        // 탭 1의 테마 버튼 구현
+        input_theme.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                input_theme.setText(input_theme.getText().toString());
+            }
+        });
+
+        // 탭 1의 친구 추가 버튼 구현
+        input_address = (EditText) findViewById(R.id.input_address);
+        input_name = (EditText) findViewById(R.id.input_name);
+
+        add_friend_btn = (Button) findViewById(R.id.add_friend);
+        add_friend_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String address = input_address.getText().toString();
+                String name = input_name.getText().toString();
+
+                adapter1.addItem(new AddressItem(address, name));
+                adapter1.notifyDataSetChanged();
+            }
+        });
+
+        // 탭 1의 리스트 뷰 초기화 기능 구현
+        initializer = (TextView) findViewById(R.id.init);
+        initializer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                adapter1.clear();
+
+                adapter1.notifyDataSetChanged();
+            }
+        });
+
+        // 탭 2 상단 텍스트 뷰 클릭 기능 구현
+        detailed_info = (TextView) findViewById(R.id.info);
+        detailed_path = (TextView) findViewById(R.id.path);
+        share_with = (TextView) findViewById(R.id.share);
+
+        // 탭 2 화면 구현 (구글 맵 구현)
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        // 세 번째 탭 화면 구현 (목적지, 상대방 정보 입력)
+        // 탭 3 화면 구현 (목적지, 상대방 정보 입력)
+
         ListView listView2 = (ListView) findViewById(R.id.listView2);
 
         FriendsAdapter adapter2 = new FriendsAdapter();
         adapter2.addItem(new FriendsItem("김동현", "서울시 노원구 XX아파트"));
-        adapter2.addItem(new FriendsItem("김지효", "서울시 마포구 XX아파트"));
-        adapter2.addItem(new FriendsItem("최진형", "서울시 동대문구 XX아파트"));
-        adapter2.addItem(new FriendsItem("배인석", "서울시 송파구 XX아파트"));
 
         listView2.setAdapter(adapter2);
 
     }
 
-    // 첫 번째 탭 화면의 리스트 뷰 구현
+    // 탭 1 화면의 리스트 뷰 기능 구현
     class AddressAdapter extends BaseAdapter {
         ArrayList<AddressItem> items = new ArrayList<AddressItem>();
 
@@ -103,9 +167,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return position;
         }
 
+        public void clear() {
+            items.clear();
+        }
+
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            AddressItemView view = new AddressItemView(getApplicationContext());
+            AddressItemView view = null;
+            if (convertView == null) {
+                view = new AddressItemView(getApplicationContext());
+            } else {
+                view = (AddressItemView) convertView;
+            }
 
             AddressItem item = items.get(position);
             view.setAddress(item.getAddress());
@@ -115,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // 두 번째 탭 화면의 지도 시작지점(서울)
+    // 탭 2 화면의 지도 시작지점(서울)
     @Override
     public void onMapReady(final GoogleMap googleMap) {
         map = googleMap;
@@ -132,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         map.animateCamera(CameraUpdateFactory.zoomTo(10));
     }
 
-    // 세 번째 탭 화면의 리스트 뷰 구현
+    // 탭 3 화면의 리스트 뷰 구현
     class FriendsAdapter extends BaseAdapter {
         ArrayList<FriendsItem> items = new ArrayList<FriendsItem>();
 
@@ -153,6 +226,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public long getItemId(int position) {
             return position;
+        }
+
+        public void clear() {
+            items.clear();
         }
 
         @Override
