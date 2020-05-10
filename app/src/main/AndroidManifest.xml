@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.meetinglocation">
 
+    <!--구글 맵 현재 위치 마커 표시-->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -12,9 +16,10 @@
 
         <uses-library android:name="org.apache.http.legacy" android:required="false"/>
 
+        <!--구글 맵 API Key-->
         <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAxNgQdS8GAkP3p4aG1lmMcw5lmRbgRZ_4"/>
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AIzaSyAxNgQdS8GAkP3p4aG1lmMcw5lmRbgRZ_4"/>
 
         <!-- 스플래쉬 액티비티 -->
         <activity
@@ -29,9 +34,10 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity">
-
-        </activity>
+        <!-- EditText 키보드 자동 활성화 off -->
+        <activity
+            android:name=".MainActivity"
+            android:windowSoftInputMode="stateHidden"/>
     </application>
 
 </manifest>
