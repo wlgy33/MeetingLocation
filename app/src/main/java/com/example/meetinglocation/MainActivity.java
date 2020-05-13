@@ -1,5 +1,6 @@
 package com.example.meetinglocation;
 
+import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,6 +12,7 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -212,7 +214,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         initializer.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                adapter1.clear();
+                // "초기화" 색상 변환
+                initializer.setTextColor(Color.parseColor("#1592E6"));
+
+                // 초기화 재확인 AlertDialog 생성 및 동작
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                builder.setTitle("알림").setMessage("초기화하시겠습니까?");
+                // 확인 버튼 눌렀을 때
+                builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "초기화하였습니다", Toast.LENGTH_SHORT).show();
+                        adapter1.clear();
+                    }
+                });
+                // 취소 버튼 눌렀을 때
+                builder.setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "초기화를 취소하였습니다", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                AlertDialog alertDialog = builder.create();
+
+                alertDialog.show();
 
                 adapter1.notifyDataSetChanged();
             }
