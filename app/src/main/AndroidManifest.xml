@@ -36,7 +36,6 @@
         <activity android:name=".LoginActivity"
             android:noHistory="true">
 
-
         </activity>
 
         <!-- EditText 키보드 자동 활성화 off -->

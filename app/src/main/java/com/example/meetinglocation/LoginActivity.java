@@ -29,7 +29,6 @@ public class LoginActivity extends AppCompatActivity{
     private static final int RC_SIGN_IN = 10;
     private GoogleSignInClient mGoogleSignInClient;
     private FirebaseAuth mAuth;
-
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login);
@@ -67,7 +66,6 @@ public class LoginActivity extends AppCompatActivity{
         }
     }
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-
 
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential)
