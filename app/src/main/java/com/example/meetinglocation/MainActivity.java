@@ -104,12 +104,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // 탭 3의 위젯 변수
     EditText input_name2;   //
     EditText getInput_address2;
-
+    // 뒤로가기 두번 시 앱 종료
+    private BackPressCloseHandler backKeyClickHandler;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        backKeyClickHandler = new BackPressCloseHandler(this);
         // 탭 호스트 구성
         TabHost host = (TabHost) findViewById(R.id.host);
         host.setup();
@@ -642,5 +643,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             return view;
         }
+    }
+    @Override
+    public void onBackPressed(){
+
+        //super.onBackPressed();
+        backKeyClickHandler.onBackPressed();
     }
 }

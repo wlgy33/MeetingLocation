@@ -19,7 +19,7 @@
         <!--구글 맵 API Key-->
         <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyAxNgQdS8GAkP3p4aG1lmMcw5lmRbgRZ_4"/>
+        android:value="AIzaSyDmcvKvYcFzRQsiLwbBKA852bywJI7o9Ng"/>
 
         <!-- 스플래쉬 액티비티 -->
         <activity
@@ -32,6 +32,11 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity android:name=".LoginActivity"
+            android:noHistory="true">
+
+
         </activity>
 
         <!-- EditText 키보드 자동 활성화 off -->
