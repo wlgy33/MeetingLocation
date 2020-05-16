@@ -103,9 +103,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // 탭 3의 위젯 변수
     EditText input_name2;   //
-    EditText input_address2;
-    Button add_friend_btn2;      // 주소와 이름을 입력받고 리스트에 추가
-    FriendsAdapter adapter2;    // 리스트 뷰를 위한 어댑터
+    EditText getInput_address2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,7 +129,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         spec.setContent(R.id.tab_content3);
         host.addTab(spec);
 
-        // 탭 1 시작
         // 탭 1 화면 구현 (목적지, 상대방 정보 입력)
         ListView listView1 = (ListView) findViewById(R.id.listView1);
         input_theme = (EditText) findViewById(R.id.theme);
@@ -224,7 +221,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
 
                 builder.setTitle("알림").setMessage("초기화하시겠습니까?");
-
                 // 확인 버튼 눌렀을 때
                 builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
@@ -249,7 +245,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // 탭 2 시작
         // 탭 2 상단 텍스트 뷰 클릭 기능 구현
         detailed_info = (TextView) findViewById(R.id.info);
         detailed_path = (TextView) findViewById(R.id.path);
@@ -268,60 +263,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        // 탭 3 시작
         // 탭 3 화면 구현 (목적지, 상대방 정보 입력)
 
         ListView listView2 = (ListView) findViewById(R.id.listView2);
 
-        final FriendsAdapter adapter2 = new FriendsAdapter();
+        FriendsAdapter adapter2 = new FriendsAdapter();
         adapter2.addItem(new FriendsItem("김동현", "서울시 노원구 XX아파트"));
 
         listView2.setAdapter(adapter2);
 
-        // 탭 3의 친구 추가 버튼 구현
-        input_address2 = (EditText) findViewById(R.id.input_address2);
-        input_name2 = (EditText) findViewById(R.id.input_name2);
-
-        // editText의 키보드 줄바꿈->완료
-        input_name2.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                switch (actionId) {
-                    case EditorInfo.IME_ACTION_NEXT:
-                        break;
-                }
-                return true;
-            }
-        });
-
-        // editText의 키보드 줄바꿈->다음 editText
-        input_address2.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                switch (actionId) {
-                    case EditorInfo.IME_ACTION_DONE:
-                        break;
-                }
-                return true;
-            }
-        });
-
-
-        add_friend_btn2 = (Button) findViewById(R.id.add_friend2);
-        add_friend_btn2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String address = input_address2.getText().toString();
-                String name = input_name2.getText().toString();
-
-                adapter2.addItem(new FriendsItem(name, address));
-                adapter2.notifyDataSetChanged();
-            }
-        });
-
     }
-
-    // 필요한 class, method
 
     // 탭 1 화면의 리스트 뷰 기능 구현
     class AddressAdapter extends BaseAdapter {
