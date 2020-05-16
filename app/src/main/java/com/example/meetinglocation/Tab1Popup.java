@@ -19,6 +19,8 @@ public class Tab1Popup extends Activity {
         addressEntered1 = (EditText) findViewById(R.id.address_entered1);
         nameEntered1 = (EditText) findViewById(R.id.name_entered1);
 
+        Intent intent = getIntent();
+        String data = intent.getStringExtra("data");
 
     }
 
