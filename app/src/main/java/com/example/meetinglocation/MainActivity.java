@@ -25,9 +25,11 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.AutoCompleteTextView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -37,6 +39,8 @@ import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -52,15 +56,27 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.model.RectangularBounds;
+import com.google.android.libraries.places.api.model.TypeFilter;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.AutocompleteActivity;
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
+    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ";
     // 탭 1의 위젯 변수
     EditText input_theme;       // 입력받을 테마
     EditText input_address;     // 입력받을 주소
@@ -68,6 +84,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     Button add_friend_btn;      // 주소와 이름을 입력받고 리스트에 추가
     AddressAdapter adapter1;    // 리스트 뷰를 위한 어댑터
     TextView initializer;       // 리스트 초기화
+    int AUTOCOMPLETE_REQUEST_CODE = 1; // 주소 입력시 onStartActivity값
+
+
 
 
 
@@ -104,11 +123,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // 탭 3의 위젯 변수
     EditText input_name2;   //
     EditText getInput_address2;
-
+    // 뒤로가기 두번 시 앱 종료
+    private BackPressCloseHandler backKeyClickHandler;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        backKeyClickHandler = new BackPressCloseHandler(this);
+        //구글 플레이스 initialize
+        Places.initialize(getApplicationContext(), apiKey);
+        PlacesClient placesClient = Places.createClient(this);
 
         // 탭 호스트 구성
         TabHost host = (TabHost) findViewById(R.id.host);
@@ -170,7 +194,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 탭 1의 친구 추가 버튼 구현
         input_address = (EditText) findViewById(R.id.input_address);
+
         input_name = (EditText) findViewById(R.id.input_name);
+        //출발지 검색기능
+        input_address.setFocusable(false);
+        input_address.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                List<Place.Field> fieldList = Arrays.asList(Place.Field.ADDRESS, Place.Field.LAT_LNG,Place.Field.NAME);
+                Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fieldList).build(MainActivity.this);
+                startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE);
+            }
+        });
 
         // editText의 키보드 줄바꿈->완료
         input_name.setOnEditorActionListener(new EditText.OnEditorActionListener() {
@@ -206,6 +241,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 adapter1.addItem(new AddressItem(address, name));
                 adapter1.notifyDataSetChanged();
+                input_address.setText(null);
+                input_name.setText(null);
             }
         });
 
@@ -273,6 +310,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         listView2.setAdapter(adapter2);
 
     }
+
+
 
     // 탭 1 화면의 리스트 뷰 기능 구현
     class AddressAdapter extends BaseAdapter {
@@ -590,6 +629,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode==AUTOCOMPLETE_REQUEST_CODE && resultCode == RESULT_OK){
+
+            Place place = Autocomplete.getPlaceFromIntent(data);
+            input_address.setText(place.getName());
+
+        }
+        else if(resultCode==AutocompleteActivity.RESULT_ERROR){
+            Status status = Autocomplete.getStatusFromIntent(data);
+            Toast.makeText(getApplicationContext(), status.getStatusMessage(),
+                    Toast.LENGTH_SHORT).show();
+        }
 
         switch (requestCode) {
             case GPS_ENABLE_REQUEST_CODE:
@@ -643,4 +693,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return view;
         }
     }
+    @Override
+    public void onBackPressed(){
+
+        //super.onBackPressed();
+        backKeyClickHandler.onBackPressed();
+    }
+
+
 }
