@@ -18,8 +18,12 @@
 
         <!--구글 맵 API Key-->
         <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+
+        <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyDmcvKvYcFzRQsiLwbBKA852bywJI7o9Ng"/>
+        android:value="AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"/>
 
         <!-- 스플래쉬 액티비티 -->
         <activity
@@ -33,11 +37,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity android:name=".LoginActivity"
             android:noHistory="true">
 
         </activity>
+        <activity android:name=".AutocompleteTestActivity">
 
+        </activity>
         <!-- EditText 키보드 자동 활성화 off -->
         <activity
             android:name=".MainActivity"
