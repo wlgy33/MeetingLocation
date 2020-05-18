@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "522147417056",
+    "firebase_url": "https://meetinglocation-492f2.firebaseio.com",
+    "project_id": "meetinglocation-492f2",
+    "storage_bucket": "meetinglocation-492f2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:522147417056:android:7fac31f3a1059ff0bd7985",
+        "android_client_info": {
+          "package_name": "com.example.meetinglocation"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "522147417056-gbv0ch3ckup2sjvqtm4cgf53sjmd61gr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.meetinglocation",
+            "certificate_hash": "a63c85d8ca9a9183f849eb15812441c85080bdb4"
+          }
+        },
+        {
+          "client_id": "522147417056-0uehuak7nqe9tn9mdm2g5vs7m3kvmou4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.meetinglocation",
+            "certificate_hash": "b4afaa3964ebfa463482db43b073d60b3af8ee9b"
+          }
+        },
+        {
+          "client_id": "522147417056-vsimvccvmtv2mlki2662u25doafd6074.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "522147417056-vsimvccvmtv2mlki2662u25doafd6074.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
