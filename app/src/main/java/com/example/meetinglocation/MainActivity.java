@@ -67,6 +67,10 @@ import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.maps.DirectionsApiRequest;
+import com.google.maps.GeoApiContext;
+import com.google.maps.PendingResult;
+import com.google.maps.model.DirectionsResult;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -78,23 +82,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         ActivityCompat.OnRequestPermissionsResultCallback {
     String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ";
     // 탭 1의 위젯 변수
-    EditText input_theme;       // 입력받을 테마
-    EditText input_address;     // 입력받을 주소
-    EditText input_name;        // 입력받을 이름 (주소와 그룹)
-    Button add_friend_btn;      // 주소와 이름을 입력받고 리스트에 추가
-    AddressAdapter adapter1;    // 리스트 뷰를 위한 어댑터
-    TextView initializer;       // 리스트 초기화
-    int AUTOCOMPLETE_REQUEST_CODE = 1; // 주소 입력시 onStartActivity값
-
-
-
-
+    EditText input_theme;               // 입력받을 테마
+    EditText input_address;             // 입력받을 주소
+    EditText input_name;                // 입력받을 이름 (주소와 그룹)
+    Button add_friend_btn;              // 주소와 이름을 입력받고 리스트에 추가
+    AddressAdapter adapter1;            // 리스트 뷰를 위한 어댑터
+    TextView initializer;               // 리스트 초기화
+    int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
+    Button cal_centroid;                // 중점 계산 버튼
+    String departure;                      // 출발지 위도 경도 저장
+    private GeoApiContext mGeoApiContext = null;
+    double latitude;
+    double longitude;
 
     // 탭 2의 위젯 변수
-    TextView detailed_info;     // 상세 정보 클릭용
-    TextView detailed_path;     // 상세 경로 클릭용
-    TextView share_with;        // SNS 공유 클릭용
-    private GoogleMap map;      // 구글 맵
+    TextView detailed_info;                 // 상세 정보 클릭용
+    TextView detailed_path;                 // 상세 경로 클릭용
+    TextView share_with;                    // SNS 공유 클릭용
+    private GoogleMap map;                  // 구글 맵
     private Marker currentMarker = null;    // 구글 맵의 현재 위치 마커
 
     // 구글 맵 업데이트를 위한 변수들
@@ -125,11 +130,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     EditText getInput_address2;
     // 뒤로가기 두번 시 앱 종료
     private BackPressCloseHandler backKeyClickHandler;
+
+    //On create
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+        // 2번 눌러 뒤로가기
         backKeyClickHandler = new BackPressCloseHandler(this);
+
         //구글 플레이스 initialize
         Places.initialize(getApplicationContext(), apiKey);
         PlacesClient placesClient = Places.createClient(this);
@@ -157,9 +168,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         ListView listView1 = (ListView) findViewById(R.id.listView1);
         input_theme = (EditText) findViewById(R.id.theme);
         add_friend_btn = (Button) findViewById(R.id.add_friend);
+        cal_centroid = (Button) findViewById(R.id.centroid_button);
 
         adapter1 = new AddressAdapter();
-        adapter1.addItem(new AddressItem("서울시 강남구", "김지효"));
+        adapter1.addItem(new AddressItem("서울시 강남구", "김지효","latlng",1232,12312));
         listView1.setAdapter(adapter1);
 
         // 탭 1의 리스트 아이템 클릭 시 동작 구현
@@ -180,6 +192,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+        // 탭 1의 만나는 장소 버튼 구현
+        cal_centroid.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, Centroid.class);
+                intent.putExtra("locations", adapter1.items);
+                startActivity(intent);
+                String centroid = intent.getExtras().getString("centroid");
+                if (currentMarker != null)
+                    currentMarker.remove();
+
+                for (int i=0; i<adapter1.items.size(); i++){
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions
+                            .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
+                            .title(adapter1.items.get(i).name);
+                    map.addMarker(markerOptions);
+                }
+                
+
+
+            }
+        });
+
         // editText의 키보드 줄바꿈->완료
         input_theme.setOnEditorActionListener(new EditText.OnEditorActionListener() {
             @Override
@@ -194,8 +230,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 탭 1의 친구 추가 버튼 구현
         input_address = (EditText) findViewById(R.id.input_address);
-
         input_name = (EditText) findViewById(R.id.input_name);
+
         //출발지 검색기능
         input_address.setFocusable(false);
         input_address.setOnClickListener(new View.OnClickListener() {
@@ -231,15 +267,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-
+        //추가 버튼 구현
         add_friend_btn = (Button) findViewById(R.id.add_friend);
         add_friend_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String address = input_address.getText().toString();
                 String name = input_name.getText().toString();
+                String latlng = departure;
+                double lat = latitude;
+                double lon = longitude;
 
-                adapter1.addItem(new AddressItem(address, name));
+                adapter1.addItem(new AddressItem(address, name, latlng,lat,lon));
                 adapter1.notifyDataSetChanged();
                 input_address.setText(null);
                 input_name.setText(null);
@@ -310,6 +349,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         listView2.setAdapter(adapter2);
 
     }
+
 
 
 
@@ -633,6 +673,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             Place place = Autocomplete.getPlaceFromIntent(data);
             input_address.setText(place.getName());
+            latitude = place.getLatLng().latitude;
+            longitude = place.getLatLng().longitude;
+            departure = "\""+latitude+"\""+":"+"\""+longitude+"\"";
 
         }
         else if(resultCode==AutocompleteActivity.RESULT_ERROR){

@@ -62,6 +62,12 @@
                     android:inputType="text"
                     android:imeOptions="actionDone"/>
 
+                <Button
+                    android:id="@+id/centroid_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="만나는 장소 찾기" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
