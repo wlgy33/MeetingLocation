@@ -415,12 +415,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 currentPosition = new LatLng(location.getLatitude(), location.getLongitude());
 
-                String markerTitle = getCurrentAddress(currentPosition);
+                //String markerTitle = getCurrentAddress(currentPosition);
                 String markerSnippet = "위도 : " + String.valueOf(location.getLatitude() + "경도 : " + String.valueOf(location.getLongitude()));
                 Log.d(TAG, "onLocationResult : " + markerSnippet);
 
                 // 현재 위치에 마커 생성하고 이동
-                setCurrentLocation(location, markerTitle, markerSnippet);
+                setCurrentLocation(location, /*markerTitle,*/ markerSnippet);
                 currentLocation = location;
             }
         }
@@ -474,7 +474,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             fusedLocationClient.removeLocationUpdates(locationCallback);
         }
     }
-
+    /*
     public String getCurrentAddress(LatLng latLng) {
         // GPS를 주소로 변환
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
@@ -499,7 +499,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Address address = addresses.get(0);
             return address.getAddressLine(0).toString();
         }
-    }
+    }*/
 
     public boolean checkLocationServicesStatus() {
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -508,7 +508,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 
-    public void setCurrentLocation(Location location, String markerTitle, String markerSnippet) {
+    public void setCurrentLocation(Location location, /*String markerTitle,*/ String markerSnippet) {
         if (currentMarker != null) {
             currentMarker.remove();
         }
@@ -517,7 +517,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(currentLatLng);
-        markerOptions.title(markerTitle);
+        //markerOptions.title(markerTitle);
         markerOptions.snippet(markerSnippet);
         markerOptions.draggable(true);
 
