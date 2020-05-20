@@ -1,19 +1,31 @@
 package com.example.meetinglocation;
 
-public class AddressItem {
+import com.google.android.gms.maps.model.LatLng;
+
+import java.io.Serializable;
+
+public class AddressItem implements Serializable {
     String address;
     String name;
+    String latlng;
+    double latitude;
+    double longitude;
 
-    public AddressItem(String address, String name) {
+    public AddressItem(String address, String name, String latlng, double latitude, double longitude) {
         this.address = address;
         this.name = name;
+        this.latlng = latlng;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public String getAddress() {
         return address;
     }
 
-    public void setAddress(String address) {
+    public String getLatLng() {return latlng;}
+
+    public void setAdress(String address) {
         this.address = address;
     }
 

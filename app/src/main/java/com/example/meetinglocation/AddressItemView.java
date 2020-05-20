@@ -8,7 +8,9 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
-public class AddressItemView extends LinearLayout {
+import java.io.Serializable;
+
+public class AddressItemView extends LinearLayout implements Serializable {
     TextView textView;
     TextView textView2;
 
