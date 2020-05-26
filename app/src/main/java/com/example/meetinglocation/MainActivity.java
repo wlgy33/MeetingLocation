@@ -2,6 +2,7 @@ package com.example.meetinglocation;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -9,6 +10,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
 import android.Manifest;
+import android.app.DownloadManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -18,7 +20,10 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.nfc.Tag;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
@@ -40,6 +45,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -54,12 +64,16 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.RectangularBounds;
 import com.google.android.libraries.places.api.model.TypeFilter;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.Autocomplete;
 import com.google.android.libraries.places.widget.AutocompleteActivity;
@@ -70,17 +84,39 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
 import com.google.maps.PendingResult;
+import com.google.maps.TextSearchRequest;
+import com.google.maps.internal.PolylineEncoding;
 import com.google.maps.model.DirectionsResult;
+import com.google.maps.model.DirectionsRoute;
+import com.google.maps.model.PlacesSearchResult;
+import com.google.maps.model.TransitMode;
+import com.google.maps.model.TravelMode;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
     String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ";
+    public static TabHost host;
     // 탭 1의 위젯 변수
     EditText input_theme;               // 입력받을 테마
     EditText input_address;             // 입력받을 주소
@@ -88,12 +124,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     Button add_friend_btn;              // 주소와 이름을 입력받고 리스트에 추가
     AddressAdapter adapter1;            // 리스트 뷰를 위한 어댑터
     TextView initializer;               // 리스트 초기화
-    int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
+    private static final int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
+    private static final int REQUEST_CODE = 9000;
     Button cal_centroid;                // 중점 계산 버튼
     String departure;                      // 출발지 위도 경도 저장
     private GeoApiContext mGeoApiContext = null;
     double latitude;
     double longitude;
+    CameraUpdate cameraUpdate;
+    LatLng latlngcen;
+    LatLng themeCentroid;
+    String themeName;
+
+
 
     // 탭 2의 위젯 변수
     TextView detailed_info;                 // 상세 정보 클릭용
@@ -101,6 +144,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     TextView share_with;                    // SNS 공유 클릭용
     private GoogleMap map;                  // 구글 맵
     private Marker currentMarker = null;    // 구글 맵의 현재 위치 마커
+    boolean firstTime = true;
+    boolean firstTimeForCentroid = true;
 
     // 구글 맵 업데이트를 위한 변수들
     private static final String TAG = "googlemap";
@@ -121,6 +166,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FusedLocationProviderClient fusedLocationClient;
     private LocationRequest locationRequest;
     private Location location;
+    private String centroid;
 
     // 퍼미션 요청 스낵바
     private View request;   // 위치 정보 퍼미션 요청을 위한 뷰 (스낵바는 뷰가 있어야 함)
@@ -131,11 +177,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // 뒤로가기 두번 시 앱 종료
     private BackPressCloseHandler backKeyClickHandler;
 
+    private RequestQueue mRequestQueue;
+    private StringRequest StringRequest;
+
     //On create
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+
 
 
         // 2번 눌러 뒤로가기
@@ -143,10 +196,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //구글 플레이스 initialize
         Places.initialize(getApplicationContext(), apiKey);
-        PlacesClient placesClient = Places.createClient(this);
+        final PlacesClient placesClient = Places.createClient(this);
 
         // 탭 호스트 구성
-        TabHost host = (TabHost) findViewById(R.id.host);
+
+        host = (TabHost) findViewById(R.id.host);
         host.setup();
 
         TabHost.TabSpec spec = host.newTabSpec("tab1");
@@ -171,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         cal_centroid = (Button) findViewById(R.id.centroid_button);
 
         adapter1 = new AddressAdapter();
-        adapter1.addItem(new AddressItem("서울시 강남구", "김지효","latlng",1232,12312));
+
         listView1.setAdapter(adapter1);
 
         // 탭 1의 리스트 아이템 클릭 시 동작 구현
@@ -194,26 +248,97 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 탭 1의 만나는 장소 버튼 구현
         cal_centroid.setOnClickListener(new View.OnClickListener() {
+
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, Centroid.class);
-                intent.putExtra("locations", adapter1.items);
-                startActivity(intent);
-                String centroid = intent.getExtras().getString("centroid");
-                if (currentMarker != null)
-                    currentMarker.remove();
+                String theme = input_theme.getText().toString();
+                Log.d(TAG, "theme : "+theme);
+                map.clear();
+                firstTimeForCentroid = true;
+                if (adapter1.items.size() == 0)
+                    Toast.makeText(getApplicationContext(),"출발지를 입력하세요",Toast.LENGTH_SHORT).show();
+                else{
+                    List <Marker> markersList = new ArrayList<Marker>();
+                    List <String> names = new ArrayList<String>();
+                    for (int i =0; i< adapter1.items.size(); i++){
+                        names.add(adapter1.items.get(i).name);
+                    }
+                    // URL 만들기
+                    String url = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/MeetingLocationCentroid?location=";
+                    String data = "{";
+                    for (int i = 0; i < adapter1.items.size(); i++) {
+                        data += adapter1.items.get(i).latlng;
+                        if (i!=adapter1.items.size()-1)
+                            data += ",";
+                    }
+                    url = url + data+"}";
 
-                for (int i=0; i<adapter1.items.size(); i++){
-                    MarkerOptions markerOptions = new MarkerOptions();
-                    markerOptions
-                            .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
-                            .title(adapter1.items.get(i).name);
-                    map.addMarker(markerOptions);
-                }
-                
+                    //HTTP 통신
+                    try {
+                        centroid = new HttpAsyncTask().execute(url).get();
+                        Log.d(TAG, "centroid: "+centroid);
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    // 중점 lATlNG 형태로 변형
+
+                    double centroid_latitude;
+                    double centroid_longitude;
+                    centroid = centroid.substring(1,centroid.length()-2);
+                    int comma = centroid.indexOf(',');
+                    centroid_latitude = Double.parseDouble(centroid.substring(0,comma-1));
+                    centroid_longitude = Double.parseDouble(centroid.substring(comma+2,centroid.length()));
+                    latlngcen = new LatLng(centroid_latitude,centroid_longitude);
+                    // 현재 지도 위치 마커 삭제
+                    map.clear();
+
+                    // 출발지 지도에 마커로 표시
+                    for (int i=0; i<adapter1.items.size(); i++){
+
+                        MarkerOptions markerOptions = new MarkerOptions();
+                        markerOptions
+                                .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
+                                .title(adapter1.items.get(i).name);
+
+                        markersList.add(map.addMarker(markerOptions));
+                    }
+                    geoLocate(theme,0.01);
 
 
-            }
+                    // 중점 지도에 마커로 표시
+                    Marker Centroid = map.addMarker(new MarkerOptions()
+                            .position(latlngcen)
+                            .title("중점")
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+
+                    for (Marker m : markersList){
+                        calculateDirections(m,Centroid);
+                    }
+
+                    // 모든 출발지 화면 내에 표시
+                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                    for (Marker m : markersList){
+                        builder.include(m.getPosition());
+                    }
+                    int padding =50;
+                    LatLngBounds bounds =builder.build();
+                    cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+                    map.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
+                        @Override
+                        public void onMapLoaded() {
+                            if (firstTimeForCentroid) {
+                                map.animateCamera(cameraUpdate);
+                                firstTimeForCentroid=false;
+                            }
+
+
+                        }
+                    });
+                    host.setCurrentTab(1);
+            }}
         });
 
         // editText의 키보드 줄바꿈->완료
@@ -227,6 +352,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return true;
             }
         });
+
 
         // 탭 1의 친구 추가 버튼 구현
         input_address = (EditText) findViewById(R.id.input_address);
@@ -318,6 +444,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 alertDialog.show();
 
                 adapter1.notifyDataSetChanged();
+                map.clear();
+                firstTime=true;
+
             }
         });
 
@@ -338,6 +467,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        if (mGeoApiContext==null){
+            mGeoApiContext = new GeoApiContext.Builder()
+                    .apiKey(apiKey)
+                    .build();
+        }
 
         // 탭 3 화면 구현 (목적지, 상대방 정보 입력)
 
@@ -348,6 +482,119 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         listView2.setAdapter(adapter2);
 
+    }
+
+    private void addPolylinesToMap(final DirectionsResult result){
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "run: result routes: " + result.routes.length);
+
+                for(DirectionsRoute route: result.routes){
+                    Log.d(TAG, "run: leg: " + route.legs[0].toString());
+                    List<com.google.maps.model.LatLng> decodedPath = PolylineEncoding.decode(route.overviewPolyline.getEncodedPath());
+
+                    List<LatLng> newDecodedPath = new ArrayList<>();
+
+                    // This loops through all the LatLng coordinates of ONE polyline.
+                    for(com.google.maps.model.LatLng latLng: decodedPath){
+
+//                        Log.d(TAG, "run: latlng: " + latLng.toString());
+
+                        newDecodedPath.add(new LatLng(
+                                latLng.lat,
+                                latLng.lng
+                        ));
+                    }
+                    Polyline polyline = map.addPolyline(new PolylineOptions().addAll(newDecodedPath));
+                    polyline.setColor(Color.BLACK);
+                    polyline.setClickable(true);
+
+                }
+            }
+        });
+    }
+
+    private void geoLocate(String theme, double param){
+        Log.d(TAG,"geolocate : geolocating");
+        String searchString = theme;
+        Geocoder geocoder = new Geocoder(MainActivity.this);
+        List<Address> list = new ArrayList<>();
+        double latcen = latlngcen.latitude;
+        double lngcen = latlngcen.longitude;
+        try{
+            list = geocoder.getFromLocationName(searchString, 1, latcen-param,lngcen-param,latcen+param,latcen+param);
+
+        }catch (IOException e){
+            Log.e(TAG,"geolocate : IOException"+e.getMessage());
+        }
+        if (list.size()>0){
+            Address address = list.get(0);
+            Log.d(TAG,"geoLocate: found a location : "+address.toString());
+        }
+
+    }
+
+    private void calculateDirections(final Marker markerOrigin, Marker markerDestination){
+
+
+        com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
+                markerDestination.getPosition().latitude,
+                markerDestination.getPosition().longitude
+        );
+        DirectionsApiRequest directions = new DirectionsApiRequest(mGeoApiContext);
+        directions.alternatives(false);
+        directions.origin(
+                new com.google.maps.model.LatLng(
+                markerOrigin.getPosition().latitude,
+                markerOrigin.getPosition().longitude
+        ));
+        directions.mode(TravelMode.TRANSIT);
+        Log.d(TAG,"destination latlng: "+destination.toString());
+        directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
+            @Override
+            public void onResult(DirectionsResult result) {
+                Log.d(TAG,"onResult: routes : " + result.routes[0].toString());
+                Log.d(TAG,"onResult: geocodedWayPoints: "+result.geocodedWaypoints.toString());
+                addPolylinesToMap(result);
+            }
+            @Override
+            public void onFailure(Throwable e) {
+
+                Log.e(TAG,"onFailure: "+e.getMessage());
+            }
+        });
+
+    }
+
+
+
+
+    private static class HttpAsyncTask extends AsyncTask<String, Void, String>{
+        OkHttpClient client = new OkHttpClient();
+        @Override
+        protected String doInBackground(String... params) {
+            String result = null;
+            String strUrl = params[0];
+
+            try {
+                Request request = new Request.Builder()
+                        .url(strUrl)
+                        .build();
+                Response response = client.newCall(request).execute();
+                return result = response.body().string();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return result;
+        }
+        @Override
+        protected void onPostExecute(String s){
+            super.onPostExecute(s);
+            if (s!= null)
+                Log.d(TAG,s);
+        }
     }
 
 
@@ -378,6 +625,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         public void clear() {
             items.clear();
+            this.notifyDataSetChanged();
         }
 
         @Override
@@ -455,7 +703,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 currentPosition = new LatLng(location.getLatitude(), location.getLongitude());
 
-                String markerTitle = getCurrentAddress(currentPosition);
+                String markerTitle = "현재 위치";
                 String markerSnippet = "위도 : " + String.valueOf(location.getLatitude() + "경도 : " + String.valueOf(location.getLongitude()));
                 Log.d(TAG, "onLocationResult : " + markerSnippet);
 
@@ -514,7 +762,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             fusedLocationClient.removeLocationUpdates(locationCallback);
         }
     }
-
+/*
     public String getCurrentAddress(LatLng latLng) {
         // GPS를 주소로 변환
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
@@ -539,7 +787,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Address address = addresses.get(0);
             return address.getAddressLine(0).toString();
         }
-    }
+    }*/
 
     public boolean checkLocationServicesStatus() {
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -561,10 +809,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         markerOptions.snippet(markerSnippet);
         markerOptions.draggable(true);
 
-        currentMarker = map.addMarker(markerOptions);
+        //currentMarker = map.addMarker(markerOptions);
 
+        // 처음에만 카메라 현재 위치로 이동
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLatLng);
-        map.moveCamera(cameraUpdate);
+        if (firstTime) {
+            map.animateCamera(cameraUpdate);
+            firstTime = false;
+        }
     }
 
     public void setDefaultLocation() {
@@ -677,12 +929,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitude = place.getLatLng().longitude;
             departure = "\""+latitude+"\""+":"+"\""+longitude+"\"";
 
+
         }
-        else if(resultCode==AutocompleteActivity.RESULT_ERROR){
+        if(resultCode==AutocompleteActivity.RESULT_ERROR){
             Status status = Autocomplete.getStatusFromIntent(data);
             Toast.makeText(getApplicationContext(), status.getStatusMessage(),
                     Toast.LENGTH_SHORT).show();
         }
+
 
         switch (requestCode) {
             case GPS_ENABLE_REQUEST_CODE:
