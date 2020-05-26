@@ -3,6 +3,7 @@
     package="com.example.meetinglocation">
 
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--구글 맵 현재 위치 마커 표시-->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -44,7 +45,7 @@
             android:noHistory="true">
 
         </activity>
-        <activity android:name="Centroid"/>
+
 
         <!-- EditText 키보드 자동 활성화 off -->
         <activity
