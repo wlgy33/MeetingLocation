@@ -93,6 +93,9 @@ import com.google.maps.model.TransitMode;
 import com.google.maps.model.TravelMode;
 
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -104,6 +107,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -115,7 +119,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ";
+    String apiKey = ""; // APIkey 입력
     public static TabHost host;
     // 탭 1의 위젯 변수
     EditText input_theme;               // 입력받을 테마
@@ -133,7 +137,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     double longitude;
     CameraUpdate cameraUpdate;
     LatLng latlngcen;
-    LatLng themeCentroid;
     String themeName;
 
 
@@ -252,6 +255,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View v) {
+                //지도 마커 초기화
+                map.clear();
+
+                themeName = "";
                 String theme = input_theme.getText().toString();
                 Log.d(TAG, "theme : "+theme);
                 map.clear();
@@ -265,24 +272,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         names.add(adapter1.items.get(i).name);
                     }
                     // URL 만들기
-                    String url = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/MeetingLocationCentroid?location=";
+                    String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/main?location=";
                     String data = "{";
                     for (int i = 0; i < adapter1.items.size(); i++) {
                         data += adapter1.items.get(i).latlng;
                         if (i!=adapter1.items.size()-1)
                             data += ",";
                     }
-                    url = url + data+"}";
+                    cenurl = cenurl + data+"}";
 
                     //HTTP 통신
                     try {
-                        centroid = new HttpAsyncTask().execute(url).get();
+                        centroid = new HttpAsyncTaskForCentroid().execute(cenurl).get();
                         Log.d(TAG, "centroid: "+centroid);
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+
+
                     // 중점 lATlNG 형태로 변형
 
                     double centroid_latitude;
@@ -291,9 +300,74 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     int comma = centroid.indexOf(',');
                     centroid_latitude = Double.parseDouble(centroid.substring(0,comma-1));
                     centroid_longitude = Double.parseDouble(centroid.substring(comma+2,centroid.length()));
+
+
+
+
                     latlngcen = new LatLng(centroid_latitude,centroid_longitude);
+                    // 중점 지도에 마커로 표시
+                    Marker Centroid1 = map.addMarker(new MarkerOptions()
+                            .position(latlngcen)
+                            .title("기준 중점")
+                            .snippet(centroid_latitude+", "+centroid_longitude)
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+
+
+                    int radius = 50;
+                    //Theme URL 만들기
+                    while (theme.equals("")==false) {
+
+                        String themeUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="+theme+"&location="
+                                + centroid_latitude + "," + centroid_longitude + "&radius=" + radius  + "&key=" + apiKey;
+                        Log.d(TAG, "themeUrl : " + themeUrl);
+                        String resulttheme = null;
+                        try {
+                            resulttheme = new HttpAsyncTaskForCentroid().execute(themeUrl).get();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                        JSONObject themeResult = null;
+                        JSONArray resultArray = null;
+                        String status = null;
+                        try {
+                            themeResult = new JSONObject(resulttheme);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            status = themeResult.getString("status");
+                            Log.d(TAG,"status : " + status);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        if (status.equals("ZERO_RESULTS")){
+                            radius += 50;
+                            Log.d(TAG,"radius: "+radius);
+                            continue;
+                        }
+                        JSONObject firstResult;
+
+                        try {
+                            resultArray = themeResult.getJSONArray("results");
+                            firstResult = resultArray.getJSONObject(0);
+                            centroid_latitude = firstResult.getJSONObject("geometry").getJSONObject("location").getDouble("lat");
+                            centroid_longitude = firstResult.getJSONObject("geometry").getJSONObject("location").getDouble("lng");
+                            themeName = firstResult.getString("name");
+                            Log.d(TAG,"result , themeName : "+firstResult.getString("name") + ", " + themeName);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+
+                        break;
+
+                    }
+
                     // 현재 지도 위치 마커 삭제
-                    map.clear();
+
 
                     // 출발지 지도에 마커로 표시
                     for (int i=0; i<adapter1.items.size(); i++){
@@ -301,17 +375,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions
                                 .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
-                                .title(adapter1.items.get(i).name);
+                                .title(adapter1.items.get(i).name)
+                                .snippet(adapter1.items.get(i).latitude+","+adapter1.items.get(i).longitude);
 
                         markersList.add(map.addMarker(markerOptions));
                     }
-                    geoLocate(theme,0.01);
 
 
+                    latlngcen = new LatLng(centroid_latitude,centroid_longitude);
                     // 중점 지도에 마커로 표시
                     Marker Centroid = map.addMarker(new MarkerOptions()
                             .position(latlngcen)
-                            .title("중점")
+                            .title(themeName)
+                            .snippet(centroid_latitude+", "+centroid_longitude)
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
 
                     for (Marker m : markersList){
@@ -429,6 +505,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     public void onClick(DialogInterface dialog, int which) {
                         Toast.makeText(getApplicationContext(), "초기화하였습니다", Toast.LENGTH_SHORT).show();
                         adapter1.clear();
+                        map.clear();
+                        firstTime=true;
+                        input_theme.setText(null);
                     }
                 });
                 // 취소 버튼 눌렀을 때
@@ -444,8 +523,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 alertDialog.show();
 
                 adapter1.notifyDataSetChanged();
-                map.clear();
-                firstTime=true;
+
 
             }
         });
@@ -515,29 +593,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void geoLocate(String theme, double param){
-        Log.d(TAG,"geolocate : geolocating");
-        String searchString = theme;
-        Geocoder geocoder = new Geocoder(MainActivity.this);
-        List<Address> list = new ArrayList<>();
-        double latcen = latlngcen.latitude;
-        double lngcen = latlngcen.longitude;
-        try{
-            list = geocoder.getFromLocationName(searchString, 1, latcen-param,lngcen-param,latcen+param,latcen+param);
 
-        }catch (IOException e){
-            Log.e(TAG,"geolocate : IOException"+e.getMessage());
-        }
-        if (list.size()>0){
-            Address address = list.get(0);
-            Log.d(TAG,"geoLocate: found a location : "+address.toString());
-        }
-
-    }
 
     private void calculateDirections(final Marker markerOrigin, Marker markerDestination){
-
-
         com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
                 markerDestination.getPosition().latitude,
                 markerDestination.getPosition().longitude
@@ -567,11 +625,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    private static class HttpAsyncTaskForCentroid extends AsyncTask<String, Void, String>{
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(30,TimeUnit.SECONDS)
+                .readTimeout(30,TimeUnit.SECONDS)
+                .writeTimeout(30,TimeUnit.SECONDS)
+                .build();
 
-
-
-    private static class HttpAsyncTask extends AsyncTask<String, Void, String>{
-        OkHttpClient client = new OkHttpClient();
         @Override
         protected String doInBackground(String... params) {
             String result = null;
@@ -596,6 +656,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG,s);
         }
     }
+
 
 
 
