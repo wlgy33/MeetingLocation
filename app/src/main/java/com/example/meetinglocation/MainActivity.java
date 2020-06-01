@@ -429,7 +429,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-
         // 탭 1의 친구 추가 버튼 구현
         input_address = (EditText) findViewById(R.id.input_address);
         input_name = (EditText) findViewById(R.id.input_name);
