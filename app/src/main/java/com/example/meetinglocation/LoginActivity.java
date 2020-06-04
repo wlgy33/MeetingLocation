@@ -24,15 +24,23 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity{
     private static final int RC_SIGN_IN = 10;
     private GoogleSignInClient mGoogleSignInClient;
     private FirebaseAuth mAuth;
+    FirebaseFirestore fStore;
+    String userID;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login);
         mAuth = FirebaseAuth.getInstance();
+
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
@@ -75,7 +83,7 @@ public class LoginActivity extends AppCompatActivity{
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
 
-                            FirebaseUser user = mAuth.getCurrentUser();
+                            FirebaseUser fUser = mAuth.getCurrentUser();
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             startActivity(intent);
                             //updateUI(user);
