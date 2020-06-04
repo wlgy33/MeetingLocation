@@ -96,15 +96,20 @@ public class Pop extends Activity {
                 LatLng latlng = new LatLng(friendlat,friendlong);
 
                 if (!name.equals("")&&!address.equals("")){
+
                     FirebaseUser fUser = mAuth.getCurrentUser();
                     userID = fUser.getUid();
                     Log.d(TAG, "userId : "+userID);
+
                     DocumentReference documentReference = db.collection("users").document(userID)
                             .collection("Friends").document(name);
+
                     Map<String, Object> userFriend = new HashMap<>();
+
                     userFriend.put("name", name);
                     userFriend.put("address",address);
                     userFriend.put("latlng",latlng);
+
                     db.collection("users").document(userID).collection("Friends")
                             .get()
                             .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
@@ -134,10 +139,6 @@ public class Pop extends Activity {
                             Log.w(TAG, "Error writing document",e);
                         }
                     });
-                    Intent intent = new Intent();
-                    setResult(RESULT_OK,intent);
-
-
                     finish();
                 }
                 else{
