@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
@@ -33,24 +32,14 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.core.FirestoreClient;
-import com.google.firebase.firestore.core.Query;
-
-import org.w3c.dom.Document;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 
-
-
-public class Pop extends Activity {
+public class PopModify extends Activity {
     private static final String TAG = "POP";
     private static final int AUTOCOMPLETE_REQUEST_CODE = 9000;
     double friendlat;
@@ -73,7 +62,7 @@ public class Pop extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.pop);
+        setContentView(R.layout.popmodify);
         friend_address = findViewById(R.id.friend_address);
         friend_name = findViewById(R.id.friend_name);
         addBook = findViewById(R.id.addBook);
@@ -93,11 +82,16 @@ public class Pop extends Activity {
         close.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideSoftKeyboard(Pop.this);
+                hideSoftKeyboard(PopModify.this);
                 finish();
             }
         });
-        /**/
+        Intent intent = getIntent();
+        Log.d(TAG,"intent : "+intent);
+        final String bName = intent.getExtras().getString("name");
+        String bAddress = intent.getExtras().getString("address");
+        friend_name.setText(bName);
+        friend_address.setText(bAddress);
 
         addBook.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -114,26 +108,29 @@ public class Pop extends Activity {
                         public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                             if (task.isSuccessful()){
                                 DocumentSnapshot documentSnapshot = task.getResult();
-                                if (documentSnapshot.exists())
-                                    Toast.makeText(getApplicationContext(),"이미 있는 이름입니다. ",Toast.LENGTH_SHORT).show();
+                                if (documentSnapshot.exists() && bName.equals(name)){
+                                    DocumentReference modifyRef = db.collection("users")
+                                            .document(userID).collection("Friends").document(name);
+                                    modifyRef.update("address",address);
+                                    modifyRef.update("latlng",latlng);
+                                    Toast.makeText(getApplicationContext(),"수정되었습니다.",Toast.LENGTH_SHORT).show();
+                                    finish();
+                                }
+                                else if(documentSnapshot.exists() && !bName.equals( name)){
+                                    Toast.makeText(getApplicationContext(), "이미 있는 이름입니다.",Toast.LENGTH_SHORT).show();
+                                }
                                 else{
                                     DocumentReference documentReference = db.collection("users").document(userID)
+                                            .collection("Friends").document(bName);
+                                    documentReference.delete();
+                                    DocumentReference updateDocumentReference = db.collection("users").document(userID)
                                             .collection("Friends").document(name);
                                     Map<String, Object> userFriend = new HashMap<>();
                                     userFriend.put("name", name);
                                     userFriend.put("address", address);
                                     userFriend.put("latlng", latlng);
-                                    documentReference.set(userFriend).addOnSuccessListener(new OnSuccessListener<Void>() {
-                                        @Override
-                                        public void onSuccess(Void aVoid) {
-                                            Log.d(TAG, "DocumentSnapshot successfully written");
-                                        }
-                                    }).addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception e) {
-                                            Log.w(TAG, "Error writing document", e);
-                                        }
-                                    });
+                                    updateDocumentReference.set(userFriend);
+                                    Toast.makeText(getApplicationContext(),"수정되었습니다.",Toast.LENGTH_SHORT).show();
                                     finish();
                                 }
                             }
@@ -167,8 +164,8 @@ public class Pop extends Activity {
             Log.d(TAG, "friend_address : "+friend_address.getText().toString());
             friendlat = place.getLatLng().latitude;
             friendlong = place.getLatLng().longitude;
-            InputMethodManager imm = (InputMethodManager) Pop.this.getSystemService(Context.INPUT_METHOD_SERVICE);
-            hideSoftKeyboard(Pop.this);
+            InputMethodManager imm = (InputMethodManager) PopModify.this.getSystemService(Context.INPUT_METHOD_SERVICE);
+            hideSoftKeyboard(PopModify.this);
         }
         if (resultCode == AutocompleteActivity.RESULT_ERROR) {
             Status status = Autocomplete.getStatusFromIntent(data);

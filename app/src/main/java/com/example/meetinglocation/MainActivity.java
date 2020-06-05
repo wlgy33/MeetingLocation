@@ -48,6 +48,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -137,7 +138,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = ""; // APIkey 입력
+    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"; // APIkey 입력
     public static TabHost host;
 
     // 탭 1의 위젯 변수
@@ -305,6 +306,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             data += ",";
                     }
                     cenurl = cenurl + data + "}";
+                    Log.d(TAG, "cenurl = "+cenurl);
 
                     //HTTP 통신
                     try {
@@ -580,6 +582,66 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         adapter2.notifyDataSetChanged();
                     }
                 });
+        listView2.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                PopupMenu popupMenu = new PopupMenu(MainActivity.this,view);
+
+                getMenuInflater().inflate(R.menu.menu_listview,popupMenu.getMenu());
+                final int index = position;
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        switch(item.getItemId()){
+                            case R.id.addtolist:
+                                String name = adapter2.items.get(index).name;
+                                String address = adapter2.items.get(index).address;
+                                com.example.meetinglocation.LatLng mlatlng = adapter2.items.get(index).latlng;
+                                String slatlng = "\""+mlatlng.getLatitude()+"\""+":"+"\""+mlatlng.getLongitude()+"\"";
+                                adapter1.items.add(new AddressItem(address,name,slatlng,mlatlng.getLatitude(),mlatlng.getLongitude()));
+                                adapter1.notifyDataSetChanged();
+                                Toast.makeText(MainActivity.this, "추가되었습니다.",Toast.LENGTH_SHORT).show();
+                                break;
+                            case R.id.modify:
+                                Intent intent = new Intent(MainActivity.this,PopModify.class);
+                                intent.putExtra("name",adapter2.items.get(index).name);
+                                intent.putExtra("address",adapter2.items.get(index).address);
+                                startActivity(intent);
+
+
+
+                                break;
+                            case R.id.delete:
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                builder.setTitle("삭제");
+                                builder.setMessage("삭제하시겠습니까?");
+                                builder.setCancelable(true);
+                                builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        db.collection("users").document(userID).collection("Friends")
+                                                .document(adapter2.items.get(index).name).delete();
+                                        Toast.makeText(MainActivity.this, "삭제되었습니다.",Toast.LENGTH_SHORT).show();
+
+                                    }
+                                });
+                                builder.setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                                builder.create().show();
+
+                                break;
+                        }
+                        return false;
+                    }
+                });
+                popupMenu.show();
+                return false;
+            }
+        });
     }
 
     //지도에 경로 표시
@@ -645,6 +707,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
     }
+
     //HTTP 통신
     private static class HttpAsyncTask extends AsyncTask<String, Void, String> {
         OkHttpClient client = new OkHttpClient.Builder()
@@ -678,7 +741,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG, s);
         }
     }
-
 
     // 탭 1 화면의 리스트 뷰 기능 구현
     class AddressAdapter extends BaseAdapter {
@@ -999,6 +1061,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -1018,11 +1081,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(getApplicationContext(), status.getStatusMessage(),
                     Toast.LENGTH_SHORT).show();
         }
-        if (requestCode==ADD_FRIEND){
-            if(resultCode==RESULT_OK){
 
-            }
-        }
 
 
 

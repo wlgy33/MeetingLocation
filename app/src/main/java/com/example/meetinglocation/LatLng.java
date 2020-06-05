@@ -1,5 +1,7 @@
 package com.example.meetinglocation;
 
+import androidx.annotation.NonNull;
+
 public class LatLng {
     private Double latitude;
     private Double longitude;
@@ -11,5 +13,11 @@ public class LatLng {
 
     public Double getLongitude() {
         return longitude;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return super.toString();
     }
 }
