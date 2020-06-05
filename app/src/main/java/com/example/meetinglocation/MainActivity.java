@@ -138,7 +138,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"; // APIkey 입력
+    String apiKey = ""; // APIkey 입력
     public static TabHost host;
 
     // 탭 1의 위젯 변수
