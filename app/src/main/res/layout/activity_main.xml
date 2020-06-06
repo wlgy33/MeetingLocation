@@ -8,7 +8,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:focusable="true"
+        android:onClick="linearOnClick">
 
         <FrameLayout
             android:id="@android:id/tabcontent"
@@ -60,7 +62,8 @@
                     android:textSize="20sp"
                     android:maxLines="1"
                     android:inputType="text"
-                    android:imeOptions="actionDone"/>
+                    android:imeOptions="actionDone"
+                    />
 
                 <Button
                     android:id="@+id/centroid_button"
@@ -84,7 +87,10 @@
                         android:textColor="#46B26E"
                         android:textSize="20sp"
                         android:inputType="text"
-                        android:imeOptions="actionNext"/>
+                        android:imeOptions="actionNext"
+                        android:maxLines="1"
+                        android:nextFocusDown="@id/input_address"
+                        />
 
                     <EditText
                         android:id="@+id/input_address"
@@ -95,8 +101,10 @@
                         android:hint="출발지"
                         android:textSize="20sp"
                         android:inputType="text"
-                        android:imeOptions="actionSearch"
-                        android:onClick="startAutocompleteActivity"/>
+                        android:imeOptions="actionDone"
+                        android:onClick="startAutocompleteActivity"
+
+                        />
                     <Button
                         android:id="@+id/add_friend"
                         android:layout_width="match_parent"

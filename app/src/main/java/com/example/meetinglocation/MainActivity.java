@@ -2,17 +2,22 @@ package com.example.meetinglocation;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.DownloadManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
@@ -26,8 +31,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.renderscript.ScriptGroup;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -39,7 +46,9 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -69,6 +78,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.RectangularBounds;
@@ -81,6 +92,14 @@ import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
 import com.google.maps.PendingResult;
@@ -121,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         ActivityCompat.OnRequestPermissionsResultCallback {
     String apiKey = ""; // APIkey 입력
     public static TabHost host;
+
     // 탭 1의 위젯 변수
     EditText input_theme;               // 입력받을 테마
     EditText input_address;             // 입력받을 주소
@@ -128,18 +148,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     Button add_friend_btn;              // 주소와 이름을 입력받고 리스트에 추가
     AddressAdapter adapter1;            // 리스트 뷰를 위한 어댑터
     TextView initializer;               // 리스트 초기화
-    private static final int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
-    private static final int REQUEST_CODE = 9000;
     Button cal_centroid;                // 중점 계산 버튼
-    String departure;                      // 출발지 위도 경도 저장
-    private GeoApiContext mGeoApiContext = null;
+    String departure;                   // 출발지 위도 경도 저장
+
     double latitude;
     double longitude;
     CameraUpdate cameraUpdate;
     LatLng latlngcen;
     String themeName;
 
-
+    private static final int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
+    private static final int ADD_FRIEND = 9001;
+    private GeoApiContext mGeoApiContext = null;
 
     // 탭 2의 위젯 변수
     TextView detailed_info;                 // 상세 정보 클릭용
@@ -175,8 +195,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private View request;   // 위치 정보 퍼미션 요청을 위한 뷰 (스낵바는 뷰가 있어야 함)
 
     // 탭 3의 위젯 변수
-    EditText input_name2;   //
-    EditText getInput_address2;
+    private RecyclerView recyclerView;
+    private RecyclerView.Adapter mAdapter;
+    private RecyclerView.LayoutManager layoutManager;
+
+    FriendsAdapter adapter2;
+    private FirebaseAuth mAuth;
+    FirebaseFirestore db;
+    String userID;
+    private ArrayList<FriendsItem> mFriends;
+
     // 뒤로가기 두번 시 앱 종료
     private BackPressCloseHandler backKeyClickHandler;
 
@@ -188,9 +216,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+        userID = mAuth.getCurrentUser().getUid();
         setContentView(R.layout.activity_main);
-
-
+        final InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
 
 
@@ -222,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         host.addTab(spec);
 
         // 탭 1 화면 구현 (목적지, 상대방 정보 입력)
-        ListView listView1 = (ListView) findViewById(R.id.listView1);
+        final ListView listView1 = (ListView) findViewById(R.id.listView1);
         input_theme = (EditText) findViewById(R.id.theme);
         add_friend_btn = (Button) findViewById(R.id.add_friend);
         cal_centroid = (Button) findViewById(R.id.centroid_button);
@@ -241,13 +271,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // 탭 1의 테마 버튼 구현
-        input_theme.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                input_theme.setText(input_theme.getText().toString());
-            }
-        });
+
 
         // 탭 1의 만나는 장소 버튼 구현
         cal_centroid.setOnClickListener(new View.OnClickListener() {
@@ -255,74 +279,88 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View v) {
+                if (v!=null){
+                    imm.hideSoftInputFromWindow(v.getWindowToken(),0);
+                }
                 //지도 마커 초기화
                 map.clear();
-
                 themeName = "";
                 String theme = input_theme.getText().toString();
-                Log.d(TAG, "theme : "+theme);
+                Log.d(TAG, "theme : " + theme);
                 map.clear();
                 firstTimeForCentroid = true;
-                if (adapter1.items.size() == 0)
-                    Toast.makeText(getApplicationContext(),"출발지를 입력하세요",Toast.LENGTH_SHORT).show();
-                else{
-                    List <Marker> markersList = new ArrayList<Marker>();
-                    List <String> names = new ArrayList<String>();
-                    for (int i =0; i< adapter1.items.size(); i++){
+                if (adapter1.items.size() <= 1)
+                    Toast.makeText(getApplicationContext(), "출발지가 부족합니다", Toast.LENGTH_SHORT).show();
+                else {
+                    List<Marker> markersList = new ArrayList<Marker>();
+                    List<String> names = new ArrayList<String>();
+                    for (int i = 0; i < adapter1.items.size(); i++) {
                         names.add(adapter1.items.get(i).name);
                     }
                     // URL 만들기
-                    String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/main?location=";
+                    String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/MeetingLocationCentroid?location=";
                     String data = "{";
                     for (int i = 0; i < adapter1.items.size(); i++) {
                         data += adapter1.items.get(i).latlng;
-                        if (i!=adapter1.items.size()-1)
+                        if (i != adapter1.items.size() - 1)
                             data += ",";
                     }
-                    cenurl = cenurl + data+"}";
+                    cenurl = cenurl + data + "}";
+                    Log.d(TAG, "cenurl = "+cenurl);
 
                     //HTTP 통신
                     try {
-                        centroid = new HttpAsyncTaskForCentroid().execute(cenurl).get();
-                        Log.d(TAG, "centroid: "+centroid);
+                        centroid = new HttpAsyncTask().execute(cenurl).get();
+                        Log.d(TAG, "centroid: " + centroid);
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
 
-
                     // 중점 lATlNG 형태로 변형
 
                     double centroid_latitude;
                     double centroid_longitude;
-                    centroid = centroid.substring(1,centroid.length()-2);
+                    centroid = centroid.substring(1, centroid.length() - 2);
                     int comma = centroid.indexOf(',');
-                    centroid_latitude = Double.parseDouble(centroid.substring(0,comma-1));
-                    centroid_longitude = Double.parseDouble(centroid.substring(comma+2,centroid.length()));
+                    centroid_latitude = Double.parseDouble(centroid.substring(0, comma - 1));
+                    centroid_longitude = Double.parseDouble(centroid.substring(comma + 2, centroid.length()));
 
+                    // 출발지 지도에 마커로 표시
+                    for (int i = 0; i < adapter1.items.size(); i++) {
 
+                        MarkerOptions markerOptions = new MarkerOptions();
+                        markerOptions
+                                .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
+                                .title(adapter1.items.get(i).name)
+                                .snippet(adapter1.items.get(i).latitude + "," + adapter1.items.get(i).longitude);
 
+                        markersList.add(map.addMarker(markerOptions));
+                    }
 
-                    latlngcen = new LatLng(centroid_latitude,centroid_longitude);
-                    // 중점 지도에 마커로 표시
-                    Marker Centroid1 = map.addMarker(new MarkerOptions()
+                    // 처음 중점 지도에 마커로 표시
+                    latlngcen = new LatLng(centroid_latitude, centroid_longitude);
+                    Marker Centroid = map.addMarker(new MarkerOptions()
                             .position(latlngcen)
                             .title("기준 중점")
-                            .snippet(centroid_latitude+", "+centroid_longitude)
+                            .snippet(centroid_latitude + ", " + centroid_longitude)
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
 
-
+                    //검색 반경 설정
                     int radius = 50;
-                    //Theme URL 만들기
-                    while (theme.equals("")==false) {
 
-                        String themeUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="+theme+"&location="
-                                + centroid_latitude + "," + centroid_longitude + "&radius=" + radius  + "&key=" + apiKey;
+                    //Theme URL 만들기
+                    Marker themeCentroid = null;
+                    while (theme.equals("") == false) {
+                        //테마에 맞춰 중점 주변 검색
+                        String themeUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + theme + "&location="
+                                + centroid_latitude + "," + centroid_longitude + "&radius=" + radius + "&key=" + apiKey;
                         Log.d(TAG, "themeUrl : " + themeUrl);
                         String resulttheme = null;
+                        //HTTP 통신
                         try {
-                            resulttheme = new HttpAsyncTaskForCentroid().execute(themeUrl).get();
+                            resulttheme = new HttpAsyncTask().execute(themeUrl).get();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         } catch (ExecutionException e) {
@@ -333,156 +371,124 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         String status = null;
                         try {
                             themeResult = new JSONObject(resulttheme);
+                            status = themeResult.getString("status");
+                            Log.d(TAG, "status : " + status);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
 
-                        try {
-                            status = themeResult.getString("status");
-                            Log.d(TAG,"status : " + status);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        if (status.equals("ZERO_RESULTS")){
+                        // 결과 없음 시 반경 증가 후 재검색
+                        if (status.equals("ZERO_RESULTS")) {
                             radius += 50;
-                            Log.d(TAG,"radius: "+radius);
+                            Log.d(TAG, "radius: " + radius);
                             continue;
                         }
                         JSONObject firstResult;
 
                         try {
                             resultArray = themeResult.getJSONArray("results");
-                            firstResult = resultArray.getJSONObject(0);
-                            centroid_latitude = firstResult.getJSONObject("geometry").getJSONObject("location").getDouble("lat");
-                            centroid_longitude = firstResult.getJSONObject("geometry").getJSONObject("location").getDouble("lng");
-                            themeName = firstResult.getString("name");
-                            Log.d(TAG,"result , themeName : "+firstResult.getString("name") + ", " + themeName);
+                            centroid_latitude = resultArray.getJSONObject(0).getJSONObject("geometry")
+                                    .getJSONObject("location").getDouble("lat");
+                            centroid_longitude = resultArray.getJSONObject(0).getJSONObject("geometry")
+                                    .getJSONObject("location").getDouble("lng");
+                            themeName = resultArray.getJSONObject(0).getString("name");
+                            Log.d(TAG, "result , themeName : " + resultArray.getJSONObject(0).getString("name") + ", "
+                                    + themeName);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-
+                        //테마 마커 추가
+                        latlngcen = new LatLng(centroid_latitude, centroid_longitude);
+                        themeCentroid = map.addMarker(new MarkerOptions()
+                                .position(latlngcen)
+                                .title(themeName)
+                                .snippet(centroid_latitude + ", " + centroid_longitude)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
 
                         break;
-
                     }
 
-                    // 현재 지도 위치 마커 삭제
-
-
-                    // 출발지 지도에 마커로 표시
-                    for (int i=0; i<adapter1.items.size(); i++){
-
-                        MarkerOptions markerOptions = new MarkerOptions();
-                        markerOptions
-                                .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
-                                .title(adapter1.items.get(i).name)
-                                .snippet(adapter1.items.get(i).latitude+","+adapter1.items.get(i).longitude);
-
-                        markersList.add(map.addMarker(markerOptions));
+                    //테마 입력/미입력 시 경로 출력
+                    if (theme.equals("")) {
+                        for (Marker m : markersList) {
+                            calculateDirections(m, Centroid);
+                        }
+                    } else {
+                        for (Marker m : markersList) {
+                            calculateDirections(m, themeCentroid);
+                        }
                     }
 
-
-                    latlngcen = new LatLng(centroid_latitude,centroid_longitude);
-                    // 중점 지도에 마커로 표시
-                    Marker Centroid = map.addMarker(new MarkerOptions()
-                            .position(latlngcen)
-                            .title(themeName)
-                            .snippet(centroid_latitude+", "+centroid_longitude)
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-
-                    for (Marker m : markersList){
-                        calculateDirections(m,Centroid);
-                    }
 
                     // 모든 출발지 화면 내에 표시
                     LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                    for (Marker m : markersList){
+                    for (Marker m : markersList) {
                         builder.include(m.getPosition());
                     }
-                    int padding =50;
-                    LatLngBounds bounds =builder.build();
+                    int padding = 50;
+                    LatLngBounds bounds = builder.build();
                     cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding);
                     map.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
                         @Override
                         public void onMapLoaded() {
                             if (firstTimeForCentroid) {
                                 map.animateCamera(cameraUpdate);
-                                firstTimeForCentroid=false;
+                                firstTimeForCentroid = false;
                             }
 
 
                         }
                     });
                     host.setCurrentTab(1);
-            }}
-        });
-
-        // editText의 키보드 줄바꿈->완료
-        input_theme.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                switch (actionId) {
-                    case EditorInfo.IME_ACTION_DONE:
-                        break;
                 }
-                return true;
             }
         });
+
+        // 테마의 엔터 후 키보드 숨기기
+        input_theme.setOnEditorActionListener(new DoneOnEditorActionListener());
+
 
         // 탭 1의 친구 추가 버튼 구현
         input_address = (EditText) findViewById(R.id.input_address);
         input_name = (EditText) findViewById(R.id.input_name);
+        input_name.setNextFocusDownId(R.id.input_address);
 
         //출발지 검색기능
         input_address.setFocusable(false);
-        input_address.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                List<Place.Field> fieldList = Arrays.asList(Place.Field.ADDRESS, Place.Field.LAT_LNG,Place.Field.NAME);
-                Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fieldList).build(MainActivity.this);
-                startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE);
-            }
-        });
 
-        // editText의 키보드 줄바꿈->완료
-        input_name.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                switch (actionId) {
-                    case EditorInfo.IME_ACTION_NEXT:
-                        break;
-                }
-                return true;
-            }
-        });
 
-        // editText의 키보드 줄바꿈->다음 editText
-        input_address.setOnEditorActionListener(new EditText.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                switch (actionId) {
-                    case EditorInfo.IME_ACTION_DONE:
-                        break;
-                }
-                return true;
-            }
-        });
+        // 이름의 엔터 후 키보드 숨기기
+        input_name.setOnEditorActionListener(new NextOnEditorActionListener());
+
+        // 주소의 엔터 후 키보드 숨기기
+        input_address.setOnEditorActionListener(new DoneOnEditorActionListener());
+
 
         //추가 버튼 구현
         add_friend_btn = (Button) findViewById(R.id.add_friend);
         add_friend_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String address = input_address.getText().toString();
-                String name = input_name.getText().toString();
-                String latlng = departure;
-                double lat = latitude;
-                double lon = longitude;
+                if (input_address.getText().toString().equals("")){
+                    Toast.makeText(getApplicationContext(),"출발지를 입력하세요.",Toast.LENGTH_SHORT).show();
+                    Log.d(TAG,"주소 입력 X");
+                }
+                else{
+                    String address = input_address.getText().toString();
+                    String name = input_name.getText().toString();
+                    String latlng = departure;
+                    double lat = latitude;
+                    double lon = longitude;
 
-                adapter1.addItem(new AddressItem(address, name, latlng,lat,lon));
-                adapter1.notifyDataSetChanged();
-                input_address.setText(null);
-                input_name.setText(null);
+                    adapter1.addItem(new AddressItem(address, name, latlng, lat, lon));
+                    adapter1.notifyDataSetChanged();
+                    input_address.setText(null);
+                    input_name.setText(null);
+                    if (v!=null){
+                        imm.hideSoftInputFromWindow(v.getWindowToken(),0);
+                    }
+                    Log.d(TAG,"주소 입력 O, 주소 : "+input_address.getText());
+                }
             }
         });
 
@@ -505,8 +511,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Toast.makeText(getApplicationContext(), "초기화하였습니다", Toast.LENGTH_SHORT).show();
                         adapter1.clear();
                         map.clear();
-                        firstTime=true;
+                        firstTime = true;
                         input_theme.setText(null);
+                        input_address.setText(null);
+                        input_name.setText(null);
                     }
                 });
                 // 취소 버튼 눌렀을 때
@@ -535,7 +543,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // 탭 2 화면 구현 (구글 맵 구현)
         locationRequest = new LocationRequest().setPriority(
                 LocationRequest.PRIORITY_HIGH_ACCURACY).setInterval(
-                        UPDATE_INTERVAL_MS).setFastestInterval(FASTEST_UPDATE_INTERVAL_MS);
+                UPDATE_INTERVAL_MS).setFastestInterval(FASTEST_UPDATE_INTERVAL_MS);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder();
         builder.addLocationRequest(locationRequest);
@@ -544,37 +552,113 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        if (mGeoApiContext==null){
+        if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
                     .apiKey(apiKey)
                     .build();
         }
 
         // 탭 3 화면 구현 (목적지, 상대방 정보 입력)
-
         ListView listView2 = (ListView) findViewById(R.id.listView2);
-
-        FriendsAdapter adapter2 = new FriendsAdapter();
-        adapter2.addItem(new FriendsItem("김동현", "서울시 노원구 XX아파트"));
-
+        adapter2 = new FriendsAdapter();
         listView2.setAdapter(adapter2);
 
+        TextView addFriend = (TextView) findViewById(R.id.add);
+        addFriend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this,Pop.class);
+                startActivityForResult(intent,ADD_FRIEND);}
+        });
+        db.collection("users").document(userID).collection("Friends")
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
+                        if(e!=null){
+                            return;
+                        }
+                        ArrayList<FriendsItem> friendsItems = (ArrayList<FriendsItem>) queryDocumentSnapshots.toObjects(FriendsItem.class);
+                        adapter2.items = friendsItems;
+                        adapter2.notifyDataSetChanged();
+                    }
+                });
+        listView2.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                PopupMenu popupMenu = new PopupMenu(MainActivity.this,view);
+
+                getMenuInflater().inflate(R.menu.menu_listview,popupMenu.getMenu());
+                final int index = position;
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        switch(item.getItemId()){
+                            case R.id.addtolist:
+                                String name = adapter2.items.get(index).name;
+                                String address = adapter2.items.get(index).address;
+                                com.example.meetinglocation.LatLng mlatlng = adapter2.items.get(index).latlng;
+                                String slatlng = "\""+mlatlng.getLatitude()+"\""+":"+"\""+mlatlng.getLongitude()+"\"";
+                                adapter1.items.add(new AddressItem(address,name,slatlng,mlatlng.getLatitude(),mlatlng.getLongitude()));
+                                adapter1.notifyDataSetChanged();
+                                Toast.makeText(MainActivity.this, "추가되었습니다.",Toast.LENGTH_SHORT).show();
+                                break;
+                            case R.id.modify:
+                                Intent intent = new Intent(MainActivity.this,PopModify.class);
+                                intent.putExtra("name",adapter2.items.get(index).name);
+                                intent.putExtra("address",adapter2.items.get(index).address);
+                                startActivity(intent);
+
+
+
+                                break;
+                            case R.id.delete:
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                builder.setTitle("삭제");
+                                builder.setMessage("삭제하시겠습니까?");
+                                builder.setCancelable(true);
+                                builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        db.collection("users").document(userID).collection("Friends")
+                                                .document(adapter2.items.get(index).name).delete();
+                                        Toast.makeText(MainActivity.this, "삭제되었습니다.",Toast.LENGTH_SHORT).show();
+
+                                    }
+                                });
+                                builder.setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                                builder.create().show();
+
+                                break;
+                        }
+                        return false;
+                    }
+                });
+                popupMenu.show();
+                return false;
+            }
+        });
     }
 
-    private void addPolylinesToMap(final DirectionsResult result){
+    //지도에 경로 표시
+    private void addPolylinesToMap(final DirectionsResult result) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
                 Log.d(TAG, "run: result routes: " + result.routes.length);
 
-                for(DirectionsRoute route: result.routes){
+                for (DirectionsRoute route : result.routes) {
                     Log.d(TAG, "run: leg: " + route.legs[0].toString());
                     List<com.google.maps.model.LatLng> decodedPath = PolylineEncoding.decode(route.overviewPolyline.getEncodedPath());
 
                     List<LatLng> newDecodedPath = new ArrayList<>();
 
                     // This loops through all the LatLng coordinates of ONE polyline.
-                    for(com.google.maps.model.LatLng latLng: decodedPath){
+                    for (com.google.maps.model.LatLng latLng : decodedPath) {
 
 //                        Log.d(TAG, "run: latlng: " + latLng.toString());
 
@@ -592,9 +676,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-
-
-    private void calculateDirections(final Marker markerOrigin, Marker markerDestination){
+    //경로 계산 및 addPolylinesToMap 수행
+    private void calculateDirections(final Marker markerOrigin, Marker markerDestination) {
         com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
                 markerDestination.getPosition().latitude,
                 markerDestination.getPosition().longitude
@@ -603,32 +686,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         directions.alternatives(false);
         directions.origin(
                 new com.google.maps.model.LatLng(
-                markerOrigin.getPosition().latitude,
-                markerOrigin.getPosition().longitude
-        ));
+                        markerOrigin.getPosition().latitude,
+                        markerOrigin.getPosition().longitude
+                ));
         directions.mode(TravelMode.TRANSIT);
-        Log.d(TAG,"destination latlng: "+destination.toString());
+        Log.d(TAG, "destination latlng: " + destination.toString());
         directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
             @Override
             public void onResult(DirectionsResult result) {
-                Log.d(TAG,"onResult: routes : " + result.routes[0].toString());
-                Log.d(TAG,"onResult: geocodedWayPoints: "+result.geocodedWaypoints.toString());
+                Log.d(TAG, "onResult: routes : " + result.routes[0].toString());
+                Log.d(TAG, "onResult: geocodedWayPoints: " + result.geocodedWaypoints.toString());
                 addPolylinesToMap(result);
             }
+
             @Override
             public void onFailure(Throwable e) {
 
-                Log.e(TAG,"onFailure: "+e.getMessage());
+                Log.e(TAG, "onFailure: " + e.getMessage());
             }
         });
 
     }
 
-    private static class HttpAsyncTaskForCentroid extends AsyncTask<String, Void, String>{
+    //HTTP 통신
+    private static class HttpAsyncTask extends AsyncTask<String, Void, String> {
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30,TimeUnit.SECONDS)
-                .readTimeout(30,TimeUnit.SECONDS)
-                .writeTimeout(30,TimeUnit.SECONDS)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
 
         @Override
@@ -648,17 +733,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             return result;
         }
+
         @Override
-        protected void onPostExecute(String s){
+        protected void onPostExecute(String s) {
             super.onPostExecute(s);
-            if (s!= null)
-                Log.d(TAG,s);
+            if (s != null)
+                Log.d(TAG, s);
         }
     }
-
-
-
-
 
     // 탭 1 화면의 리스트 뷰 기능 구현
     class AddressAdapter extends BaseAdapter {
@@ -757,7 +839,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onLocationResult(LocationResult locationResult) {
             super.onLocationResult(locationResult);
             List<Location> locationList = locationResult.getLocations();
-
             if (locationList.size() > 0) {
                 location = locationList.get(locationList.size() - 1);
 
@@ -978,24 +1059,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         builder.create().show();
     }
 
+
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode==AUTOCOMPLETE_REQUEST_CODE && resultCode == RESULT_OK){
+        if (requestCode == AUTOCOMPLETE_REQUEST_CODE && resultCode == RESULT_OK) {
 
             Place place = Autocomplete.getPlaceFromIntent(data);
             input_address.setText(place.getName());
             latitude = place.getLatLng().latitude;
             longitude = place.getLatLng().longitude;
-            departure = "\""+latitude+"\""+":"+"\""+longitude+"\"";
-
+            departure = "\"" + latitude + "\"" + ":" + "\"" + longitude + "\"";
+            InputMethodManager imm = (InputMethodManager) MainActivity.this.getSystemService(Context.INPUT_METHOD_SERVICE);
+            hideSoftKeyboard(MainActivity.this);
 
         }
-        if(resultCode==AutocompleteActivity.RESULT_ERROR){
+        if (resultCode == AutocompleteActivity.RESULT_ERROR) {
             Status status = Autocomplete.getStatusFromIntent(data);
             Toast.makeText(getApplicationContext(), status.getStatusMessage(),
                     Toast.LENGTH_SHORT).show();
         }
+
+
 
 
         switch (requestCode) {
@@ -1043,6 +1130,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public View getView(int position, View convertView, ViewGroup parent) {
             FriendsItemView view = new FriendsItemView(getApplicationContext());
 
+
             FriendsItem item = items.get(position);
             view.setName(item.getName());
             view.setAddress(item.getAddress());
@@ -1050,12 +1138,61 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return view;
         }
     }
+
     @Override
-    public void onBackPressed(){
+    public void onBackPressed() {
 
         //super.onBackPressed();
         backKeyClickHandler.onBackPressed();
     }
+    //완료 누르면 키보드 내리기
+    class DoneOnEditorActionListener implements TextView.OnEditorActionListener{
+        @Override
+        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+            if (actionId == EditorInfo.IME_ACTION_DONE){
+                InputMethodManager imm = (InputMethodManager) v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(v.getWindowToken(),0);
+                return true;
+            }
+            return false;
+        }
+    }
 
+    //다음 누르면 키보드 내리기
+    class NextOnEditorActionListener implements TextView.OnEditorActionListener{
+        @Override
+        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+            if (actionId == EditorInfo.IME_ACTION_NEXT){
+                InputMethodManager imm = (InputMethodManager) v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(v.getWindowToken(),0);
+                return true;
+            }
+            return false;
+        }
+    }
 
+    //키보드 떠있을때 화면 누르면 키보드 내리기
+    public void linearOnClick(View v){
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(v.getWindowToken(),0);
+    }
+
+    //출발지 입력 onClick
+    public void startAutocompleteActivity(View view){
+        Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY,
+                Arrays.asList(Place.Field.ADDRESS, Place.Field.LAT_LNG, Place.Field.NAME))
+                .setTypeFilter(TypeFilter.ESTABLISHMENT)
+                .setCountries(Arrays.asList("KR"))
+                .build(this);
+        startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE);
+
+    }
+
+    //키보드 숨기기
+    public static void hideSoftKeyboard(Activity context){
+        InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if(imm != null)
+            imm.hideSoftInputFromWindow(context.getWindow().getDecorView().getApplicationWindowToken(),0);
+        context.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
 }

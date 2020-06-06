@@ -11,4 +11,10 @@
     <style name="SplashTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/starting</item>
     </style>
+
+    <style name="AppTheme.Pop">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowCloseOnTouchOutside">false</item>
+
+    </style>
 </resources>
