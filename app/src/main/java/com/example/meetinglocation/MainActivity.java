@@ -138,7 +138,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = ""; // APIkey 입력
+    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"; // APIkey 입력
     public static TabHost host;
 
     // 탭 1의 위젯 변수
@@ -159,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private static final int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
     private static final int ADD_FRIEND = 9001;
+    private static final int MODIFY_START = 9002;
     private GeoApiContext mGeoApiContext = null;
 
     // 탭 2의 위젯 변수
@@ -202,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     FriendsAdapter adapter2;
     private FirebaseAuth mAuth;
     FirebaseFirestore db;
-    String userID;
+    String userEmail;
     private ArrayList<FriendsItem> mFriends;
 
     // 뒤로가기 두번 시 앱 종료
@@ -218,7 +219,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-        userID = mAuth.getCurrentUser().getUid();
+        userEmail = mAuth.getCurrentUser().getEmail();
         setContentView(R.layout.activity_main);
         final InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
@@ -252,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         host.addTab(spec);
 
         // 탭 1 화면 구현 (목적지, 상대방 정보 입력)
-        final ListView listView1 = (ListView) findViewById(R.id.listView1);
+        ListView listView1 = (ListView) findViewById(R.id.listView1);
         input_theme = (EditText) findViewById(R.id.theme);
         add_friend_btn = (Button) findViewById(R.id.add_friend);
         cal_centroid = (Button) findViewById(R.id.centroid_button);
@@ -262,12 +263,62 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         listView1.setAdapter(adapter1);
 
         // 탭 1의 리스트 아이템 클릭 시 동작 구현
-        listView1.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        listView1.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                AddressItem item = (AddressItem) adapter1.getItem(position);
-                Toast.makeText(getApplicationContext(), "선택 : " + item.getName(), Toast.LENGTH_LONG).show();
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                PopupMenu popupMenu = new PopupMenu(MainActivity.this,view);
 
+                getMenuInflater().inflate(R.menu.menu_listview_tab1,popupMenu.getMenu());
+                final int index = position;
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        switch(item.getItemId()){
+                            case R.id.modify:
+                                Intent intent = new Intent(MainActivity.this,PopModify1Tab.class);
+                                intent.putExtra("name",adapter1.items.get(index).name);
+                                intent.putExtra("address",adapter1.items.get(index).address);
+                                intent.putExtra("lat",adapter1.items.get(index).latitude);
+                                intent.putExtra("lng",adapter1.items.get(index).longitude);
+                                intent.putExtra("index",index);
+                                startActivityForResult(intent,MODIFY_START);
+                                /*Intent getIntent = getIntent();
+                                String mName = getIntent.getExtras().getString("name");
+                                String mAddress = getIntent.getExtras().getString("address");
+                                Double mLat = getIntent.getExtras().getDouble("lat");
+                                Double mLong = getIntent.getExtras().getDouble("long");
+                                String mLatLng = "\""+mLat+"\""+":"+"\""+mLong+"\"";
+                                adapter1.items.set(index,new AddressItem(mAddress,mName,mLatLng,mLat,mLong));
+                                adapter1.notifyDataSetChanged();*/
+                                break;
+                            case R.id.delete:
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                builder.setTitle("삭제");
+                                builder.setMessage("삭제하시겠습니까?");
+                                builder.setCancelable(true);
+                                builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        adapter1.items.remove(index);
+                                        adapter1.notifyDataSetChanged();
+
+                                    }
+                                });
+                                builder.setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                                builder.create().show();
+
+                                break;
+                        }
+                        return false;
+                    }
+                });
+                popupMenu.show();
+                return false;
             }
         });
 
@@ -570,7 +621,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Intent intent = new Intent(MainActivity.this,Pop.class);
                 startActivityForResult(intent,ADD_FRIEND);}
         });
-        db.collection("users").document(userID).collection("Friends")
+        db.collection("users").document(userEmail).collection("Friends")
                 .addSnapshotListener(new EventListener<QuerySnapshot>() {
                     @Override
                     public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
@@ -607,9 +658,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 intent.putExtra("name",adapter2.items.get(index).name);
                                 intent.putExtra("address",adapter2.items.get(index).address);
                                 startActivity(intent);
-
-
-
                                 break;
                             case R.id.delete:
                                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -619,7 +667,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        db.collection("users").document(userID).collection("Friends")
+                                        db.collection("users").document(userEmail).collection("Friends")
                                                 .document(adapter2.items.get(index).name).delete();
                                         Toast.makeText(MainActivity.this, "삭제되었습니다.",Toast.LENGTH_SHORT).show();
 
@@ -787,6 +835,46 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    // 탭 3 화면의 리스트 뷰 구현
+    class FriendsAdapter extends BaseAdapter {
+        ArrayList<FriendsItem> items = new ArrayList<FriendsItem>();
+
+        @Override
+        public int getCount() {
+            return items.size();
+        }
+
+        public void addItem(FriendsItem item) {
+            items.add(item);
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        public void clear() {
+            items.clear();
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            FriendsItemView view = new FriendsItemView(getApplicationContext());
+
+
+            FriendsItem item = items.get(position);
+            view.setName(item.getName());
+            view.setAddress(item.getAddress());
+
+            return view;
+        }
+    }
+
     // 탭 2 화면의 지도 시작지점(서울)
     @Override
     public void onMapReady(final GoogleMap googleMap) {
@@ -797,6 +885,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 지도의 초기위치 : 서울. 런타임 퍼미션 요청 대화상자 및 GPS 활성 요청 대화상자 보이기 전
         setDefaultLocation();
+
 
         // 런타임 퍼미션 처리
         // 1. 위치 퍼미션을 가지고 있는 지 확인
@@ -953,7 +1042,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //currentMarker = map.addMarker(markerOptions);
 
         // 처음에만 카메라 현재 위치로 이동
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLatLng);
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLatLng,15);
         if (firstTime) {
             map.animateCamera(cameraUpdate);
             firstTime = false;
@@ -963,12 +1052,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void setDefaultLocation() {
         // 초기 마커 위치 : 서울
         LatLng DEFAULT_LOCATION = new LatLng(37.56, 126.97);
-        String markerTitle = "위치정보를 가져올 수 없음";
-        String markerSnippet = "위치 퍼미션과 GPS 활성 여부를 확인하세요";
+
 
         if (currentMarker != null) {
             currentMarker.remove();
         }
+
+       /* String markerTitle = "위치정보를 가져올 수 없음";
+        String markerSnippet = "위치 퍼미션과 GPS 활성 여부를 확인하세요";
 
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(DEFAULT_LOCATION);
@@ -976,7 +1067,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         markerOptions.snippet(markerSnippet);
         markerOptions.draggable(true);
         markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-        currentMarker = map.addMarker(markerOptions);
+        currentMarker = map.addMarker(markerOptions);*/
 
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(DEFAULT_LOCATION, 15);
         map.moveCamera(cameraUpdate);
@@ -1068,11 +1159,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (requestCode == AUTOCOMPLETE_REQUEST_CODE && resultCode == RESULT_OK) {
 
             Place place = Autocomplete.getPlaceFromIntent(data);
-            input_address.setText(place.getName());
+            input_address.setText(place.getAddress().substring(5)+" "+place.getName());
             latitude = place.getLatLng().latitude;
             longitude = place.getLatLng().longitude;
             departure = "\"" + latitude + "\"" + ":" + "\"" + longitude + "\"";
-            InputMethodManager imm = (InputMethodManager) MainActivity.this.getSystemService(Context.INPUT_METHOD_SERVICE);
             hideSoftKeyboard(MainActivity.this);
 
         }
@@ -1080,6 +1170,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Status status = Autocomplete.getStatusFromIntent(data);
             Toast.makeText(getApplicationContext(), status.getStatusMessage(),
                     Toast.LENGTH_SHORT).show();
+        }
+        if (requestCode == MODIFY_START){
+            if (resultCode == RESULT_OK){
+
+                String mName = data.getExtras().getString("name");
+                String mAddress = data.getExtras().getString("address");
+                Double mLat = data.getExtras().getDouble("lat");
+                Double mLong = data.getExtras().getDouble("long");
+                String mLatLng = "\""+mLat+"\""+":"+"\""+mLong+"\"";
+                int index = data.getExtras().getInt("index");
+                adapter1.items.set(index,new AddressItem(mAddress,mName,mLatLng,mLat,mLong));
+                adapter1.notifyDataSetChanged();
+            }
         }
 
 
@@ -1099,45 +1202,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // 탭 3 화면의 리스트 뷰 구현
-    class FriendsAdapter extends BaseAdapter {
-        ArrayList<FriendsItem> items = new ArrayList<FriendsItem>();
 
-        @Override
-        public int getCount() {
-            return items.size();
-        }
-
-        public void addItem(FriendsItem item) {
-            items.add(item);
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return items.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return position;
-        }
-
-        public void clear() {
-            items.clear();
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            FriendsItemView view = new FriendsItemView(getApplicationContext());
-
-
-            FriendsItem item = items.get(position);
-            view.setName(item.getName());
-            view.setAddress(item.getAddress());
-
-            return view;
-        }
-    }
 
     @Override
     public void onBackPressed() {
