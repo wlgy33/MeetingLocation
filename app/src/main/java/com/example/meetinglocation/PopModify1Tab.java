@@ -20,8 +20,6 @@ import androidx.annotation.Nullable;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.TypeFilter;
@@ -39,7 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-public class PopModify extends Activity {
+public class PopModify1Tab extends Activity {
     private static final String TAG = "POP";
     private static final int AUTOCOMPLETE_REQUEST_CODE = 9000;
     double friendlat;
@@ -49,8 +47,8 @@ public class PopModify extends Activity {
     Button addBook;
     ImageView close;
     FirebaseFirestore db;
-    String userEmail;
-    private FirebaseAuth mAuth;
+
+
 
     public static void hideSoftKeyboard(Activity context){
         InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -62,15 +60,12 @@ public class PopModify extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.popmodify);
+        setContentView(R.layout.pop1tab);
         friend_address = findViewById(R.id.friend_address);
         friend_name = findViewById(R.id.friend_name);
         addBook = findViewById(R.id.addBook);
         close = findViewById(R.id.close);
-        mAuth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
-        FirebaseUser fUser = mAuth.getCurrentUser();
-        userEmail = fUser.getEmail();
+
 
         DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -82,7 +77,7 @@ public class PopModify extends Activity {
         close.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideSoftKeyboard(PopModify.this);
+                hideSoftKeyboard(PopModify1Tab.this);
                 finish();
             }
         });
@@ -90,6 +85,12 @@ public class PopModify extends Activity {
         Log.d(TAG,"intent : "+intent);
         final String bName = intent.getExtras().getString("name");
         String bAddress = intent.getExtras().getString("address");
+        final int index = intent.getExtras().getInt("index");
+        final double lat = intent.getExtras().getDouble("lat");
+        final double lng = intent.getExtras().getDouble("lng");
+        friendlat = lat;
+        friendlong = lng;
+
         friend_name.setText(bName);
         friend_address.setText(bAddress);
 
@@ -99,47 +100,24 @@ public class PopModify extends Activity {
 
                 final String name = friend_name.getText().toString();
                 final String address = friend_address.getText().toString();
-                final LatLng latlng = new LatLng(friendlat,friendlong);
-
-                if (!name.equals("")&&!address.equals("")){
-                    DocumentReference checkDoc = db.collection("users").document(userEmail).collection("Friends").document(name);
-                    checkDoc.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                        @Override
-                        public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                            if (task.isSuccessful()){
-                                DocumentSnapshot documentSnapshot = task.getResult();
-                                if (documentSnapshot.exists() && bName.equals(name)){
-                                    DocumentReference modifyRef = db.collection("users")
-                                            .document(userEmail).collection("Friends").document(name);
-                                    modifyRef.update("address",address);
-                                    modifyRef.update("latlng",latlng);
-                                    Toast.makeText(getApplicationContext(),"수정되었습니다.",Toast.LENGTH_SHORT).show();
-                                    finish();
-                                }
-                                else if(documentSnapshot.exists() && !bName.equals( name)){
-                                    Toast.makeText(getApplicationContext(), "이미 있는 이름입니다.",Toast.LENGTH_SHORT).show();
-                                }
-                                else{
-                                    DocumentReference documentReference = db.collection("users").document(userEmail)
-                                            .collection("Friends").document(bName);
-                                    documentReference.delete();
-                                    DocumentReference updateDocumentReference = db.collection("users").document(userEmail)
-                                            .collection("Friends").document(name);
-                                    Map<String, Object> userFriend = new HashMap<>();
-                                    userFriend.put("name", name);
-                                    userFriend.put("address", address);
-                                    userFriend.put("latlng", latlng);
-                                    updateDocumentReference.set(userFriend);
-                                    Toast.makeText(getApplicationContext(),"수정되었습니다.",Toast.LENGTH_SHORT).show();
-                                    finish();
-                                }
-                            }
-                        }
-                    });
-                }
-                else{
+                final double latitude = friendlat;
+                final double longitude = friendlong;
+                if(name.equals("")||address.equals("")){
                     Toast.makeText(getApplicationContext(),"입력이 부족합니다.",Toast.LENGTH_SHORT).show();
                 }
+                else{
+                    Intent intent = new Intent();
+                    intent.putExtra("name",name);
+                    intent.putExtra("address",address);
+                    intent.putExtra("lat",latitude);
+                    intent.putExtra("long",longitude);
+                    intent.putExtra("index",index);
+                    setResult(RESULT_OK,intent);
+                    Log.d(TAG, "name, address, lat, lng, index : " + name + ","+address+","+latitude+","+longitude+","+index);
+                    finish();
+                }
+
+
             }
         });
         friend_address.setFocusable(false);
@@ -164,8 +142,8 @@ public class PopModify extends Activity {
             Log.d(TAG, "friend_address : "+friend_address.getText().toString());
             friendlat = place.getLatLng().latitude;
             friendlong = place.getLatLng().longitude;
-            InputMethodManager imm = (InputMethodManager) PopModify.this.getSystemService(Context.INPUT_METHOD_SERVICE);
-            hideSoftKeyboard(PopModify.this);
+            InputMethodManager imm = (InputMethodManager) PopModify1Tab.this.getSystemService(Context.INPUT_METHOD_SERVICE);
+            hideSoftKeyboard(PopModify1Tab.this);
         }
         if (resultCode == AutocompleteActivity.RESULT_ERROR) {
             Status status = Autocomplete.getStatusFromIntent(data);

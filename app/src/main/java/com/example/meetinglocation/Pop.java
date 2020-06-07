@@ -60,7 +60,7 @@ public class Pop extends Activity {
     Button addBook;
     ImageView close;
     FirebaseFirestore db;
-    String userID;
+    String userEmail;
     private FirebaseAuth mAuth;
 
     public static void hideSoftKeyboard(Activity context){
@@ -81,7 +81,7 @@ public class Pop extends Activity {
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         FirebaseUser fUser = mAuth.getCurrentUser();
-        userID = fUser.getUid();
+        userEmail = fUser.getEmail();
 
         DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -108,7 +108,7 @@ public class Pop extends Activity {
                 final LatLng latlng = new LatLng(friendlat,friendlong);
 
                 if (!name.equals("")&&!address.equals("")){
-                    DocumentReference checkDoc = db.collection("users").document(userID).collection("Friends").document(name);
+                    DocumentReference checkDoc = db.collection("users").document(userEmail).collection("Friends").document(name);
                     checkDoc.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                         @Override
                         public void onComplete(@NonNull Task<DocumentSnapshot> task) {
@@ -117,7 +117,7 @@ public class Pop extends Activity {
                                 if (documentSnapshot.exists())
                                     Toast.makeText(getApplicationContext(),"이미 있는 이름입니다. ",Toast.LENGTH_SHORT).show();
                                 else{
-                                    DocumentReference documentReference = db.collection("users").document(userID)
+                                    DocumentReference documentReference = db.collection("users").document(userEmail)
                                             .collection("Friends").document(name);
                                     Map<String, Object> userFriend = new HashMap<>();
                                     userFriend.put("name", name);
@@ -163,7 +163,7 @@ public class Pop extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == AUTOCOMPLETE_REQUEST_CODE && resultCode == RESULT_OK) {
             Place place = Autocomplete.getPlaceFromIntent(data);
-            friend_address.setText(place.getName());
+            friend_address.setText(place.getAddress().substring(5)+" "+place.getName());
             Log.d(TAG, "friend_address : "+friend_address.getText().toString());
             friendlat = place.getLatLng().latitude;
             friendlong = place.getLatLng().longitude;

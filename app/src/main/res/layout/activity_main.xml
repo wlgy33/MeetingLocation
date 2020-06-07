@@ -10,7 +10,8 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:focusable="true"
-        android:onClick="linearOnClick">
+        android:onClick="linearOnClick"
+        >
 
         <FrameLayout
             android:id="@android:id/tabcontent"
@@ -23,7 +24,9 @@
                 android:id="@+id/tab_content1"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:onClick="linearOnClick"
+                >
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -132,7 +135,8 @@
                 <ListView
                     android:id="@+id/listView1"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    >
                 </ListView>
 
             </LinearLayout>
@@ -203,7 +207,8 @@
                 android:id="@+id/tab_content3"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:onClick="linearOnClick">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
