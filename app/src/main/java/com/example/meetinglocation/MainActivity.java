@@ -30,6 +30,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.provider.Settings;
 import android.renderscript.ScriptGroup;
 import android.util.Log;
@@ -138,7 +139,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = ""; // APIkey 입력
+    String apiKey; // APIkey values 폴더 strings.xml 에 입력
     public static TabHost host;
 
     // 탭 1의 위젯 변수
@@ -215,6 +216,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //On create
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        apiKey = getString(R.string.google_map_api_key);
 
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
@@ -229,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         backKeyClickHandler = new BackPressCloseHandler(this);
 
         //구글 플레이스 initialize
-        Places.initialize(getApplicationContext(), apiKey);
+        Places.initialize(getApplicationContext(), getString(R.string.google_map_api_key));
         final PlacesClient placesClient = Places.createClient(this);
 
         // 탭 호스트 구성
@@ -361,6 +363,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (!theme.equals("")){
                         cenurl = cenurl + "&keyword="+"\""+theme+"\"";
                     }
+                    cenurl = cenurl + "&apikey=" + "\""+apiKey+"\"";
                     Log.d(TAG, "cenurl = "+cenurl);
                     //HTTP 통신
                     try {
@@ -605,6 +608,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         detailed_info = (TextView) findViewById(R.id.info);
         detailed_path = (TextView) findViewById(R.id.path);
         share_with = (TextView) findViewById(R.id.share);
+        share_with.setClickable(true);
+        //공유 버튼 구현
+        share_with.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, ShareActivity.class);
+                intent.putExtra("list", adapter1.items);
+                intent.putExtra("centroid",centroid);
+                startActivity(intent);
+            }
+        });
 
         // 탭 2 화면 구현 (구글 맵 구현)
         locationRequest = new LocationRequest().setPriority(
@@ -620,7 +634,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapFragment.getMapAsync(this);
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
-                    .apiKey(apiKey)
+                    .apiKey(getString(R.string.google_map_api_key))
                     .build();
         }
 

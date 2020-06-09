@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MeetingLocation</string>
+    <string name="google_map_api_key">AIzaSyCkYHw3Uz1goREXhxL4SlpY-qFrTEBwxV4</string>
+
 </resources>
