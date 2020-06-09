@@ -349,7 +349,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         names.add(adapter1.items.get(i).name);
                     }
                     // URL 만들기
-                    String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/MeetingLocationCentroid?location=";
+                    String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/main?location=";
                     String data = "{";
                     for (int i = 0; i < adapter1.items.size(); i++) {
                         data += adapter1.items.get(i).latlng;
@@ -357,8 +357,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             data += ",";
                     }
                     cenurl = cenurl + data + "}";
-                    Log.d(TAG, "cenurl = "+cenurl);
 
+                    if (!theme.equals("")){
+                        cenurl = cenurl + "&keyword="+"\""+theme+"\"";
+                    }
+                    Log.d(TAG, "cenurl = "+cenurl);
                     //HTTP 통신
                     try {
                         centroid = new HttpAsyncTask().execute(cenurl).get();
@@ -370,13 +373,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
 
                     // 중점 lATlNG 형태로 변형
+                    if (!theme.equals("")){
+                        int comma = centroid.indexOf(',');
+                        themeName = centroid.substring(1,comma);
+                        centroid = centroid.substring(comma+2,centroid.length()-1);
+                    }
 
                     double centroid_latitude;
                     double centroid_longitude;
-                    centroid = centroid.substring(1, centroid.length() - 2);
+                    centroid = centroid.substring(1, centroid.length() - 1);
                     int comma = centroid.indexOf(',');
-                    centroid_latitude = Double.parseDouble(centroid.substring(0, comma - 1));
-                    centroid_longitude = Double.parseDouble(centroid.substring(comma + 2, centroid.length()));
+                    centroid_latitude = Double.parseDouble(centroid.substring(0, comma));
+                    centroid_longitude = Double.parseDouble(centroid.substring(comma + 2));
 
                     // 출발지 지도에 마커로 표시
                     for (int i = 0; i < adapter1.items.size(); i++) {
@@ -392,13 +400,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     // 처음 중점 지도에 마커로 표시
                     latlngcen = new LatLng(centroid_latitude, centroid_longitude);
-                    Marker Centroid = map.addMarker(new MarkerOptions()
-                            .position(latlngcen)
-                            .title("기준 중점")
-                            .snippet(centroid_latitude + ", " + centroid_longitude)
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                    Marker Centroid;
+                    if (theme.equals("")){
+                        Centroid = map.addMarker(new MarkerOptions()
+                                .position(latlngcen)
+                                .title("중점")
+                                .snippet(centroid_latitude + ", " + centroid_longitude)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                    }
+                    else{
+                        Centroid = map.addMarker(new MarkerOptions()
+                                .position(latlngcen)
+                                .title(themeName)
+                                .snippet(centroid_latitude + ", " + centroid_longitude)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                    }
 
-                    //검색 반경 설정
+
+                    /*//검색 반경 설정
                     int radius = 50;
 
                     //Theme URL 만들기
@@ -457,18 +476,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
 
                         break;
-                    }
+                    }*/ // 테마 입력 -> GCF 에서 처리
 
                     //테마 입력/미입력 시 경로 출력
-                    if (theme.equals("")) {
-                        for (Marker m : markersList) {
-                            calculateDirections(m, Centroid);
-                        }
-                    } else {
-                        for (Marker m : markersList) {
-                            calculateDirections(m, themeCentroid);
-                        }
+
+                    for (Marker m : markersList) {
+                        calculateDirections(m, Centroid);
                     }
+
 
 
                     // 모든 출발지 화면 내에 표시
