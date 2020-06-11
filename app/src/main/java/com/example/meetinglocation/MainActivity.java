@@ -4,6 +4,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -13,7 +14,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.DownloadManager;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -30,6 +33,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.provider.Settings;
 import android.renderscript.ScriptGroup;
 import android.util.Log;
@@ -37,6 +41,7 @@ import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -49,6 +54,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,6 +66,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.common.util.AndroidUtilsLight;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -138,7 +145,7 @@ import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
-    String apiKey = "AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"; // APIkey 입력
+    String apiKey; // APIkey values 폴더 strings.xml 에 입력
     public static TabHost host;
 
     // 탭 1의 위젯 변수
@@ -156,10 +163,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     CameraUpdate cameraUpdate;
     LatLng latlngcen;
     String themeName;
+    List<Marker> markersList;
+    List<String> names;
+
+
 
     private static final int AUTOCOMPLETE_REQUEST_CODE = 1;  // 주소 입력시 onStartActivity값
     private static final int ADD_FRIEND = 9001;
     private static final int MODIFY_START = 9002;
+    private static final int LOADING = 9003;
     private GeoApiContext mGeoApiContext = null;
 
     // 탭 2의 위젯 변수
@@ -211,10 +223,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private RequestQueue mRequestQueue;
     private StringRequest StringRequest;
+    ProgressDialog progressDialog;
 
     //On create
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        apiKey = getString(R.string.google_map_api_key);
 
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
@@ -229,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         backKeyClickHandler = new BackPressCloseHandler(this);
 
         //구글 플레이스 initialize
-        Places.initialize(getApplicationContext(), apiKey);
+        Places.initialize(getApplicationContext(), getString(R.string.google_map_api_key));
         final PlacesClient placesClient = Places.createClient(this);
 
         // 탭 호스트 구성
@@ -282,14 +296,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 intent.putExtra("lng",adapter1.items.get(index).longitude);
                                 intent.putExtra("index",index);
                                 startActivityForResult(intent,MODIFY_START);
-                                /*Intent getIntent = getIntent();
-                                String mName = getIntent.getExtras().getString("name");
-                                String mAddress = getIntent.getExtras().getString("address");
-                                Double mLat = getIntent.getExtras().getDouble("lat");
-                                Double mLong = getIntent.getExtras().getDouble("long");
-                                String mLatLng = "\""+mLat+"\""+":"+"\""+mLong+"\"";
-                                adapter1.items.set(index,new AddressItem(mAddress,mName,mLatLng,mLat,mLong));
-                                adapter1.notifyDataSetChanged();*/
                                 break;
                             case R.id.delete:
                                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -321,7 +327,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return false;
             }
         });
-
+        progressDialog = new ProgressDialog(MainActivity.this);
 
 
         // 탭 1의 만나는 장소 버튼 구현
@@ -330,24 +336,110 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View v) {
+                progressDialog.setMessage("MeetMid 중...");
+
+
                 if (v!=null){
                     imm.hideSoftInputFromWindow(v.getWindowToken(),0);
                 }
                 //지도 마커 초기화
                 map.clear();
                 themeName = "";
-                String theme = input_theme.getText().toString();
+                final String theme = input_theme.getText().toString();
                 Log.d(TAG, "theme : " + theme);
                 map.clear();
                 firstTimeForCentroid = true;
-                if (adapter1.items.size() <= 1)
+                if (adapter1.items.size() <= 1) {
                     Toast.makeText(getApplicationContext(), "출발지가 부족합니다", Toast.LENGTH_SHORT).show();
+
+                }
                 else {
-                    List<Marker> markersList = new ArrayList<Marker>();
-                    List<String> names = new ArrayList<String>();
+                    progressDialog.show();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            getCentroid();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    double centroid_latitude;
+                                    double centroid_longitude;
+
+                                    int comma = centroid.indexOf(',');
+                                    centroid_latitude = Double.parseDouble(centroid.substring(0, comma));
+                                    centroid_longitude = Double.parseDouble(centroid.substring(comma + 2));
+                                    latlngcen = new LatLng(centroid_latitude,centroid_longitude);
+
+                                    // 출발지 지도에 마커로 표시
+                                    for (int i = 0; i < adapter1.items.size(); i++) {
+
+                                        MarkerOptions markerOptions = new MarkerOptions();
+                                        markerOptions
+                                                .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
+                                                .title(adapter1.items.get(i).name)
+                                                .snippet(adapter1.items.get(i).latitude + "," + adapter1.items.get(i).longitude);
+
+                                        markersList.add(map.addMarker(markerOptions));
+                                    }
+
+                                    // 처음 중점 지도에 마커로 표시
+                                    LatLng result = latlngcen;
+                                    Log.d(TAG, "result : "+latlngcen + ", " +result);
+                                    Marker Centroid;
+                                    if (theme.equals("")){
+                                        Centroid = map.addMarker(new MarkerOptions()
+                                                .position(result)
+                                                .title("중점")
+                                                .snippet(result.latitude+","+result.longitude)
+                                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                                    }
+                                    else{
+                                        Centroid = map.addMarker(new MarkerOptions()
+                                                .position(result)
+                                                .title(themeName)
+                                                .snippet(result.latitude+","+result.longitude)
+                                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                                    }
+
+                                    //테마 입력/미입력 시 경로 출력
+                                    for (Marker m : markersList) {
+                                        calculateDirections(m, Centroid);
+                                    }
+
+                                    // 모든 출발지 화면 내에 표시
+                                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                                    for (Marker m : markersList) {
+                                        builder.include(m.getPosition());
+                                        progressDialog.dismiss();
+                                    }
+                                    int padding = 70;
+                                    LatLngBounds bounds = builder.build();
+                                    cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+                                    map.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
+                                        @Override
+                                        public void onMapLoaded() {
+                                            if (firstTimeForCentroid) {
+                                                map.animateCamera(cameraUpdate);
+                                                firstTimeForCentroid = false;
+                                            }
+
+
+                                        }
+                                    });
+
+                                    host.setCurrentTab(1);
+                                }
+                            });
+                        }
+                    }).start();
+
+
+                    /*markersList = new ArrayList<Marker>();
+                    names = new ArrayList<String>();
                     for (int i = 0; i < adapter1.items.size(); i++) {
                         names.add(adapter1.items.get(i).name);
                     }
+
                     // URL 만들기
                     String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/main?location=";
                     String data = "{";
@@ -361,10 +453,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (!theme.equals("")){
                         cenurl = cenurl + "&keyword="+"\""+theme+"\"";
                     }
+                    cenurl = cenurl + "&apikey=" + "\""+apiKey+"\"";
                     Log.d(TAG, "cenurl = "+cenurl);
                     //HTTP 통신
                     try {
                         centroid = new HttpAsyncTask().execute(cenurl).get();
+
                         Log.d(TAG, "centroid: " + centroid);
                     } catch (ExecutionException e) {
                         e.printStackTrace();
@@ -378,137 +472,64 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         themeName = centroid.substring(1,comma);
                         centroid = centroid.substring(comma+2,centroid.length()-1);
                     }
-
-                    double centroid_latitude;
-                    double centroid_longitude;
-                    centroid = centroid.substring(1, centroid.length() - 1);
-                    int comma = centroid.indexOf(',');
-                    centroid_latitude = Double.parseDouble(centroid.substring(0, comma));
-                    centroid_longitude = Double.parseDouble(centroid.substring(comma + 2));
-
-                    // 출발지 지도에 마커로 표시
-                    for (int i = 0; i < adapter1.items.size(); i++) {
-
-                        MarkerOptions markerOptions = new MarkerOptions();
-                        markerOptions
-                                .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
-                                .title(adapter1.items.get(i).name)
-                                .snippet(adapter1.items.get(i).latitude + "," + adapter1.items.get(i).longitude);
-
-                        markersList.add(map.addMarker(markerOptions));
-                    }
-
-                    // 처음 중점 지도에 마커로 표시
-                    latlngcen = new LatLng(centroid_latitude, centroid_longitude);
-                    Marker Centroid;
-                    if (theme.equals("")){
-                        Centroid = map.addMarker(new MarkerOptions()
-                                .position(latlngcen)
-                                .title("중점")
-                                .snippet(centroid_latitude + ", " + centroid_longitude)
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
-                    }
-                    else{
-                        Centroid = map.addMarker(new MarkerOptions()
-                                .position(latlngcen)
-                                .title(themeName)
-                                .snippet(centroid_latitude + ", " + centroid_longitude)
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
-                    }
-
-
-                    /*//검색 반경 설정
-                    int radius = 50;
-
-                    //Theme URL 만들기
-                    Marker themeCentroid = null;
-                    while (theme.equals("") == false) {
-                        //테마에 맞춰 중점 주변 검색
-                        String themeUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + theme + "&location="
-                                + centroid_latitude + "," + centroid_longitude + "&radius=" + radius + "&key=" + apiKey;
-                        Log.d(TAG, "themeUrl : " + themeUrl);
-                        String resulttheme = null;
-                        //HTTP 통신
-                        try {
-                            resulttheme = new HttpAsyncTask().execute(themeUrl).get();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        } catch (ExecutionException e) {
-                            e.printStackTrace();
-                        }
-                        JSONObject themeResult = null;
-                        JSONArray resultArray = null;
-                        String status = null;
-                        try {
-                            themeResult = new JSONObject(resulttheme);
-                            status = themeResult.getString("status");
-                            Log.d(TAG, "status : " + status);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-
-                        // 결과 없음 시 반경 증가 후 재검색
-                        if (status.equals("ZERO_RESULTS")) {
-                            radius += 50;
-                            Log.d(TAG, "radius: " + radius);
-                            continue;
-                        }
-                        JSONObject firstResult;
-
-                        try {
-                            resultArray = themeResult.getJSONArray("results");
-                            centroid_latitude = resultArray.getJSONObject(0).getJSONObject("geometry")
-                                    .getJSONObject("location").getDouble("lat");
-                            centroid_longitude = resultArray.getJSONObject(0).getJSONObject("geometry")
-                                    .getJSONObject("location").getDouble("lng");
-                            themeName = resultArray.getJSONObject(0).getString("name");
-                            Log.d(TAG, "result , themeName : " + resultArray.getJSONObject(0).getString("name") + ", "
-                                    + themeName);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        //테마 마커 추가
-                        latlngcen = new LatLng(centroid_latitude, centroid_longitude);
-                        themeCentroid = map.addMarker(new MarkerOptions()
-                                .position(latlngcen)
-                                .title(themeName)
-                                .snippet(centroid_latitude + ", " + centroid_longitude)
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-
-                        break;
-                    }*/ // 테마 입력 -> GCF 에서 처리
-
-                    //테마 입력/미입력 시 경로 출력
-
-                    for (Marker m : markersList) {
-                        calculateDirections(m, Centroid);
-                    }
+                    */
 
 
 
-                    // 모든 출발지 화면 내에 표시
-                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                    for (Marker m : markersList) {
-                        builder.include(m.getPosition());
-                    }
-                    int padding = 50;
-                    LatLngBounds bounds = builder.build();
-                    cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding);
-                    map.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-                        @Override
-                        public void onMapLoaded() {
-                            if (firstTimeForCentroid) {
-                                map.animateCamera(cameraUpdate);
-                                firstTimeForCentroid = false;
-                            }
-
-
-                        }
-                    });
-                    host.setCurrentTab(1);
                 }
             }
+            private void getCentroid(){
+                markersList = new ArrayList<Marker>();
+                names = new ArrayList<String>();
+                String theme = input_theme.getText().toString();
+                for (int i = 0; i < adapter1.items.size(); i++) {
+                    names.add(adapter1.items.get(i).name);
+                }
+
+                // URL 만들기
+                String cenurl = "https://us-central1-meetinglocation-492f2.cloudfunctions.net/main?location=";
+                String data = "{";
+                for (int i = 0; i < adapter1.items.size(); i++) {
+                    data += adapter1.items.get(i).latlng;
+                    if (i != adapter1.items.size() - 1)
+                        data += ",";
+                }
+                cenurl = cenurl + data + "}";
+
+                if (!theme.equals("")){
+                    cenurl = cenurl + "&keyword="+"\""+theme+"\"";
+                }
+                cenurl = cenurl + "&apikey=" + "\""+apiKey+"\"";
+                Log.d(TAG, "cenurl = "+cenurl);
+                //HTTP 통신
+                try {
+                    centroid = new HttpAsyncTask().execute(cenurl).get();
+
+                    Log.d(TAG, "centroid: " + centroid);
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                // 중점 lATlNG 형태로 변형
+                if (!theme.equals("")){
+                    int comma = centroid.indexOf(',');
+                    themeName = centroid.substring(1,comma);
+                    centroid = centroid.substring(comma+2,centroid.length()-1);
+                }
+                centroid = centroid.substring(1, centroid.length() - 1);
+                Log.d(TAG,"getcentroid(): "+centroid);
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressDialog.dismiss();
+                    }
+                });
+            }
         });
+
 
         // 테마의 엔터 후 키보드 숨기기
         input_theme.setOnEditorActionListener(new DoneOnEditorActionListener());
@@ -605,6 +626,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         detailed_info = (TextView) findViewById(R.id.info);
         detailed_path = (TextView) findViewById(R.id.path);
         share_with = (TextView) findViewById(R.id.share);
+        share_with.setClickable(true);
+        //공유 버튼 구현
+        share_with.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, ShareActivity.class);
+                intent.putExtra("list", adapter1.items);
+                intent.putExtra("centroid",centroid);
+                startActivity(intent);
+            }
+        });
 
         // 탭 2 화면 구현 (구글 맵 구현)
         locationRequest = new LocationRequest().setPriority(
@@ -620,7 +652,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapFragment.getMapAsync(this);
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
-                    .apiKey(apiKey)
+                    .apiKey(getString(R.string.google_map_api_key))
                     .build();
         }
 
@@ -772,12 +804,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     //HTTP 통신
-    private static class HttpAsyncTask extends AsyncTask<String, Void, String> {
+    private class HttpAsyncTask extends AsyncTask<String, Void, String> {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
+
+
+        @Override
+        protected void onPreExecute(){
+
+            super.onPreExecute();
+        }
 
         @Override
         protected String doInBackground(String... params) {
@@ -800,6 +839,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
+
+
+
+
             if (s != null)
                 Log.d(TAG, s);
         }
@@ -1199,6 +1242,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 adapter1.notifyDataSetChanged();
             }
         }
+        if (requestCode == LOADING){
+            if (resultCode == RESULT_OK){
+                Log.d(TAG, "success Loading");
+                centroid = data.getStringExtra("centroid");
+                themeName = data.getStringExtra("themeName");
+                Log.d(TAG,"centroid, themeName : "+centroid + themeName);
+                double centroid_latitude;
+                double centroid_longitude;
+                int comma = centroid.indexOf(',');
+                centroid_latitude = Double.parseDouble(centroid.substring(0, comma));
+                centroid_longitude = Double.parseDouble(centroid.substring(comma + 2));
+                latlngcen = new LatLng(centroid_latitude,centroid_longitude);
+            }
+            else{
+                Log.d(TAG,"failed Loading");
+            }
+        }
 
 
 
@@ -1266,6 +1326,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .build(this);
         startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE);
 
+    }
+    private class Loading extends AsyncTask<Void,Void,Void>{
+        protected void onPreExecute(){
+            super.onPreExecute();
+            cal_centroid.setEnabled(false);
+
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            return null;
+        }
     }
 
     //키보드 숨기기
