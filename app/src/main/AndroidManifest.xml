@@ -59,7 +59,9 @@
         <activity android:name=".PopModify1Tab"
             android:theme="@style/AppTheme.Pop"/>
         <activity android:name=".ShareActivity"
-            android:theme="@style/AppTheme.Pop"/>
+            android:theme="@style/AppTheme.Share"/>
+
+
     </application>
 
 </manifest>
