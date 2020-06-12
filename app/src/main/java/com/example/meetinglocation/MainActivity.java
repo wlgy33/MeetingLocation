@@ -114,6 +114,7 @@ import com.google.maps.TextSearchRequest;
 import com.google.maps.internal.PolylineEncoding;
 import com.google.maps.model.DirectionsResult;
 import com.google.maps.model.DirectionsRoute;
+import com.google.maps.model.PlaceType;
 import com.google.maps.model.PlacesSearchResult;
 import com.google.maps.model.TransitMode;
 import com.google.maps.model.TravelMode;
@@ -130,11 +131,15 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import noman.googleplaces.NRPlaces;
+import noman.googleplaces.PlacesListener;
+import noman.googleplaces.PlacesException;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -144,7 +149,7 @@ import okhttp3.Response;
 import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
-        ActivityCompat.OnRequestPermissionsResultCallback {
+        ActivityCompat.OnRequestPermissionsResultCallback, PlacesListener {
     String apiKey; // APIkey values 폴더 strings.xml 에 입력
     public static TabHost host;
 
@@ -182,6 +187,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker currentMarker = null;    // 구글 맵의 현재 위치 마커
     boolean firstTime = true;
     boolean firstTimeForCentroid = true;
+
+    // 상세 정보
+    List<Marker> previous_marker = null;
+
+
 
     // 구글 맵 업데이트를 위한 변수들
     private static final String TAG = "googlemap";
@@ -623,11 +633,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         // 탭 2 상단 텍스트 뷰 클릭 기능 구현
+        // 상세 버튼 구현
         detailed_info = (TextView) findViewById(R.id.info);
+        detailed_info.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPlaceInformation(currentPosition);
+            }
+        });
+
         detailed_path = (TextView) findViewById(R.id.path);
         share_with = (TextView) findViewById(R.id.share);
         share_with.setClickable(true);
-        //공유 버튼 구현
+        // 공유 버튼 구현
         share_with.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -800,6 +818,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.e(TAG, "onFailure: " + e.getMessage());
             }
         });
+
+    }
+
+    @Override
+    public void onPlacesFailure(PlacesException e) {
+
+    }
+
+    @Override
+    public void onPlacesStart() {
+
+    }
+
+    @Override
+    public void onPlacesSuccess(final List<noman.googleplaces.Place> places) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                for (noman.googleplaces.Place place : places) {
+
+                    LatLng latLng
+                            = new LatLng(place.getLatitude()
+                            , place.getLongitude());
+
+                    //String markerSnippet = getCurrentAddress(latLng);
+
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(latLng);
+                    markerOptions.title(place.getName());
+                    //markerOptions.snippet(markerSnippet);
+                    Marker item = map.addMarker(markerOptions);
+                    previous_marker.add(item);
+
+                }
+
+                //중복 마커 제거
+                HashSet<Marker> hashSet = new HashSet<Marker>();
+                hashSet.addAll(previous_marker);
+                previous_marker.clear();
+                previous_marker.addAll(hashSet);
+            }
+        });
+    }
+
+    @Override
+    public void onPlacesFinished() {
 
     }
 
@@ -1260,9 +1324,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
 
-
-
-
         switch (requestCode) {
             case GPS_ENABLE_REQUEST_CODE:
                 // 사용자가 GPS 활성 여부 확인
@@ -1277,6 +1338,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    public void showPlaceInformation(LatLng location) {
+        // 지도 클리어
+        map.clear();
+
+        if (previous_marker != null) {
+            previous_marker.clear();
+        }
+        new NRPlaces.Builder()
+                .listener(MainActivity.this)
+                .key("AIzaSyC0PgFwuGAGB7akd0b43dsesG2f6-b54W4")
+                .latlng(location.latitude, location.longitude) // 현재위치
+                .radius(500) // 500미터 내에서 검색
+                .type(String.valueOf(PlaceType.CONVENIENCE_STORE)) // 편의점
+                .build()
+                .excute();
+    }
 
 
     @Override
