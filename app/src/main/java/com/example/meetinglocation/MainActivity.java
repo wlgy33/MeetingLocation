@@ -626,7 +626,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         detailed_info.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArrayList<PlaceInfo> cent_location = new ArrayList<>();
                 Uri gmmIntentUri = Uri.parse(String.format("geo:%f,%f?q=%s", latlngcen.latitude, latlngcen.longitude, themeName));
                 Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
                 mapIntent.setPackage("com.google.android.apps.maps");
@@ -1281,18 +1280,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
         }
     }
-
-    public class PlaceInfo {
-        LatLng cent_latLng;
-        String theme;
-
-        public PlaceInfo(LatLng cent_latLng, String theme) {
-            this.cent_latLng = latlngcen;
-            this.theme = themeName;
-        }
-    }
-
-
+    
 
     @Override
     public void onBackPressed() {
