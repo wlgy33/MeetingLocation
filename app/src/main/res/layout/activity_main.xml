@@ -121,14 +121,6 @@
                 </LinearLayout>
 
                 <TextView
-                    android:id="@+id/my_address1"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="나"
-                    android:textSize="20sp"/>
-
-                <TextView
                     android:id="@+id/my_address2"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -25,8 +25,8 @@
             android:value="@integer/google_play_services_version"/>
 
         <meta-data
-        android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"/>
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCOQWzdRUsvgcFfM1BbD1U3B401zsL1_AQ"/>
 
         <!-- 스플래쉬 액티비티 -->
         <activity
@@ -42,8 +42,7 @@
         </activity>
 
         <activity android:name=".LoginActivity"
-            android:noHistory="true"
-            >
+            android:noHistory="true">
 
         </activity>
 
