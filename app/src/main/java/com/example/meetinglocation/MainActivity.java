@@ -77,6 +77,7 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMap.OnInfoWindowClickListener;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
@@ -145,9 +146,10 @@ import okhttp3.Response;
 import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
-        ActivityCompat.OnRequestPermissionsResultCallback {
+        ActivityCompat.OnRequestPermissionsResultCallback, OnInfoWindowClickListener {
     String apiKey; // APIkey values 폴더 strings.xml 에 입력
     public static TabHost host;
+
 
     // 탭 1의 위젯 변수
     EditText input_theme;               // 입력받을 테마
@@ -398,13 +400,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         Centroid = map.addMarker(new MarkerOptions()
                                                 .position(result)
                                                 .title(themeName)
-                                                .snippet(result.latitude+","+result.longitude)
+                                                .snippet("자세한 정보를 보려면 클릭하세요.")
                                                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
                                     }
 
                                     //테마 입력/미입력 시 경로 출력
-                                    for (Marker m : markersList) {
-                                        calculateDirections(m, Centroid);
+                                    for (int i=0; i< markersList.size(); i++) {
+                                        calculateDirections(i,markersList.get(i), Centroid);
                                     }
 
                                     // 모든 출발지 화면 내에 표시
@@ -626,13 +628,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         detailed_info.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Uri gmmIntentUri = Uri.parse(String.format("geo:%f,%f?q=%s", latlngcen.latitude, latlngcen.longitude, themeName));
-                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-                mapIntent.setPackage("com.google.android.apps.maps");
-                startActivity(mapIntent);
+                Intent intent = new Intent(MainActivity.this, DetailInfo.class);
+                intent.putExtra("list", adapter1.items);
+                startActivity(intent);
             }
         });
         detailed_path = (TextView) findViewById(R.id.path);
+        detailed_path.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, DetailRouteInfo.class);
+                intent.putExtra("list", adapter1.items);
+                startActivity(intent);
+            }
+        });
         share_with = (TextView) findViewById(R.id.share);
         share_with.setClickable(true);
         //공유 버튼 구현
@@ -780,7 +789,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     //경로 계산 및 addPolylinesToMap 수행
-    private void calculateDirections(final Marker markerOrigin, Marker markerDestination) {
+    private void calculateDirections(final int index, final Marker markerOrigin, Marker markerDestination) {
+
         com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
                 markerDestination.getPosition().latitude,
                 markerDestination.getPosition().longitude
@@ -793,12 +803,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         markerOrigin.getPosition().longitude
                 ));
         directions.mode(TravelMode.TRANSIT);
+        directions.language("ko");
         Log.d(TAG, "destination latlng: " + destination.toString());
         directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
             @Override
             public void onResult(DirectionsResult result) {
-                Log.d(TAG, "onResult: routes : " + result.routes[0].toString());
+
+                String route = "";
                 Log.d(TAG, "onResult: geocodedWayPoints: " + result.geocodedWaypoints.toString());
+                Log.d(TAG, "onResult: directionstep : "+result.routes[0].legs[0].steps[1].htmlInstructions.toString());
+                adapter1.items.get(index).time = (result.routes[0].legs[0].duration).toString();
+                for (int i=0; i<result.routes[0].legs[0].steps.length;i++){
+                    route = route + result.routes[0].legs[0].steps[i].htmlInstructions +" "+ result.routes[0].legs[0].steps[i].duration + "\n";
+                }
+                adapter1.items.get(index).route = route;
                 addPolylinesToMap(result);
             }
 
@@ -948,7 +966,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d(TAG, "onMapReady : ");
 
         map = googleMap;
-
+        map.setOnInfoWindowClickListener(MainActivity.this);
         // 지도의 초기위치 : 서울. 런타임 퍼미션 요청 대화상자 및 GPS 활성 요청 대화상자 보이기 전
         setDefaultLocation();
 
@@ -1001,7 +1019,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 String markerTitle = "현재 위치";
                 String markerSnippet = "위도 : " + String.valueOf(location.getLatitude() + "경도 : " + String.valueOf(location.getLongitude()));
-                Log.d(TAG, "onLocationResult : " + markerSnippet);
+
 
                 // 현재 위치에 마커 생성하고 이동
                 setCurrentLocation(location, markerTitle, markerSnippet);
@@ -1349,5 +1367,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(imm != null)
             imm.hideSoftInputFromWindow(context.getWindow().getDecorView().getApplicationWindowToken(),0);
         context.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+    public void onInfoWindowClick(Marker marker){
+        if (marker.getSnippet().equals("자세한 정보를 보려면 클릭하세요.")){
+            Uri gmmIntentUri = Uri.parse(String.format("geo:%f,%f?q=%s", latlngcen.latitude, latlngcen.longitude, themeName));
+            Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+            mapIntent.setPackage("com.google.android.apps.maps");
+            startActivity(mapIntent);
+        }
+        Log.d(TAG, "marker : "+marker.getSnippet());
+
     }
 }

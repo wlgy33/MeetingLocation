@@ -228,54 +228,8 @@
                         android:text="추가"
                         android:textSize="20sp"
                         android:clickable="true"/>
-
-                    <TextView
-                        android:id="@+id/delete"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:gravity="center|right"
-                        android:layout_margin="10dp"
-                        android:text="삭제"
-                        android:textSize="20sp"
-                        android:clickable="true"/>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_margin="10dp">
-
-                    <EditText
-                        android:id="@+id/input_name2"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:layout_weight="1"
-                        android:hint="이름"
-                        android:textColor="#46B26E"
-                        android:textSize="20sp"
-                        android:inputType="text"
-                        android:imeOptions="actionNext"/>
-
-                    <EditText
-                        android:id="@+id/input_address2"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:layout_weight="1"
-                        android:hint="출발지"
-                        android:textSize="20sp"
-                        android:inputType="text"
-                        android:imeOptions="actionDone"/>
-                    <Button
-                        android:id="@+id/add_friend2"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="추가" />
-                </LinearLayout>
 
                 <ListView
                     android:id="@+id/listView2"

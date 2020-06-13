@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- tab3 리스트에서 보일 항목 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal"
@@ -18,7 +17,7 @@
             android:padding="10dp">
 
             <TextView
-                android:id="@+id/textView2"
+                android:id="@+id/detailname"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -29,7 +28,7 @@
                 android:textSize="25sp" />
 
             <TextView
-                android:id="@+id/textView"
+                android:id="@+id/detailtime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="10dp"

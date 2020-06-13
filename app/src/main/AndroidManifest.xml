@@ -59,6 +59,10 @@
             android:theme="@style/AppTheme.Pop"/>
         <activity android:name=".ShareActivity"
             android:theme="@style/AppTheme.Share"/>
+        <activity android:name=".DetailInfo"
+            android:theme="@style/AppTheme.Share"/>
+        <activity android:name=".DetailRouteInfo"
+            android:theme="@style/AppTheme.Share"/>
 
 
     </application>

@@ -10,6 +10,8 @@ public class AddressItem implements Serializable {
     String latlng;
     double latitude;
     double longitude;
+    String time;
+    String route;
 
     public AddressItem(String address, String name, String latlng, double latitude, double longitude) {
         this.address = address;
@@ -33,9 +35,14 @@ public class AddressItem implements Serializable {
         return name;
     }
 
+    public String getTime(){return time;}
+
+    public String getRoute(){ return route;}
+
     public void setName(String name) {
         this.name = name;
     }
+
 
     @Override
     public String toString() {
