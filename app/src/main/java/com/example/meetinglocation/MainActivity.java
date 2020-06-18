@@ -4,7 +4,6 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -14,8 +13,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -380,7 +377,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         markerOptions
                                                 .position(new LatLng(adapter1.items.get(i).latitude, adapter1.items.get(i).longitude))
                                                 .title(adapter1.items.get(i).name)
-                                                .snippet(adapter1.items.get(i).latitude + "," + adapter1.items.get(i).longitude);
+                                                .snippet(adapter1.items.get(i).address);
 
                                         markersList.add(map.addMarker(markerOptions));
                                     }
@@ -633,7 +630,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 startActivity(intent);
             }
         });
-        detailed_path = (TextView) findViewById(R.id.path);
+        /*detailed_path = (TextView) findViewById(R.id.path);
         detailed_path.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -641,7 +638,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 intent.putExtra("list", adapter1.items);
                 startActivity(intent);
             }
-        });
+        });*/
         share_with = (TextView) findViewById(R.id.share);
         share_with.setClickable(true);
         //공유 버튼 구현

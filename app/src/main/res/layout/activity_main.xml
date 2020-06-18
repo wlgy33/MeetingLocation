@@ -21,7 +21,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1">
 
-            <!--첫 번째 탭 -->
+            첫 번째 탭
             <LinearLayout
                 android:id="@+id/tab_content1"
                 android:layout_width="match_parent"
@@ -145,49 +145,38 @@
                 android:orientation="vertical">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:weightSum="10">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_margin="10dp"
                         android:text="만나는 장소"
-                        android:textStyle="bold"
-                        android:textSize="25sp" />
+                        android:textSize="25sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/info"
-                        android:layout_width="match_parent"
+                        android:layout_width="92dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:gravity="center|right"
+                        android:clickable="true"
                         android:text="상세정보"
-                        android:textSize="20sp"
-                        android:clickable="true"/>
+                        android:textSize="20sp" />
 
-                    <TextView
-                        android:id="@+id/path"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:gravity="center|right"
-                        android:layout_margin="10dp"
-                        android:text="상세경로"
-                        android:textSize="20sp"
-                        android:clickable="true"/>
 
                     <TextView
                         android:id="@+id/share"
-                        android:layout_width="match_parent"
+                        android:layout_width="99dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:gravity="center|right"
                         android:layout_marginRight="10dp"
+                        android:clickable="true"
                         android:text="공유"
-                        android:textSize="20sp"
-                        android:clickable="true"/>
+                        android:textSize="20sp" />
 
                 </LinearLayout>
 
