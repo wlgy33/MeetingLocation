@@ -163,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     CameraUpdate cameraUpdate;
     LatLng latlngcen;
     String themeName;
+    String operation ="";
     List<Marker> markersList;
     List<String> names;
 
@@ -394,11 +395,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
                                     }
                                     else{
-                                        Centroid = map.addMarker(new MarkerOptions()
-                                                .position(result)
-                                                .title(themeName)
-                                                .snippet("자세한 정보를 보려면 클릭하세요.")
-                                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                                        if (!operation.equals("")) {
+                                            Centroid = map.addMarker(new MarkerOptions()
+                                                    .position(result)
+                                                    .title(themeName + " ("+operation+")")
+                                                    .snippet("자세한 정보를 보려면 클릭하세요.")
+                                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                                        }
+                                        else{
+                                            Centroid = map.addMarker(new MarkerOptions()
+                                                    .position(result)
+                                                    .title(themeName)
+                                                    .snippet("자세한 정보를 보려면 클릭하세요.")
+                                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                                        }
                                     }
 
                                     //테마 입력/미입력 시 경로 출력
@@ -511,11 +521,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // 중점 lATlNG 형태로 변형
                 if (!theme.equals("")){
                     int comma = centroid.indexOf(',');
+
                     themeName = centroid.substring(1,comma);
-                    centroid = centroid.substring(comma+2,centroid.length()-1);
+                    centroid = centroid.substring(comma+2);
+                    int bracket = centroid.indexOf(']');
+                    Log.d(TAG, "themeCentroid = "+centroid + "   operation? " + centroid.substring(bracket+1));
+
+                    if (centroid.substring(bracket+1).length()>1){
+
+
+                        String isOpen = centroid.substring(bracket+3,centroid.length()-1);
+                        centroid = centroid.substring(0,bracket+1);
+                        if (isOpen.equals("true"))
+                            operation = "영업중";
+                        else
+                            operation = "영업종료";
+                    }
+                    else{
+
+                        centroid = centroid.substring(0,bracket+1);
+                    }
                 }
                 centroid = centroid.substring(1, centroid.length() - 1);
-                Log.d(TAG,"getcentroid(): "+centroid);
+                Log.d(TAG,"getcentroid(): "+centroid + " operation ? "+operation);
 
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override

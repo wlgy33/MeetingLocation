@@ -86,10 +86,12 @@ public class ShareActivity extends Activity {
         Intent intent = getIntent();
         shareAdapter.items = (ArrayList<AddressItem>) intent.getSerializableExtra("list");
         centroid = intent.getStringExtra("centroid");
-        int comma = centroid.indexOf(',');
-        String latcen = centroid.substring(0,comma);
-        String lngcen = centroid.substring(comma+2);
-        centroid = latcen+","+lngcen;
+        if (centroid != (null)) {
+            int comma = centroid.indexOf(',');
+            String latcen = centroid.substring(0, comma);
+            String lngcen = centroid.substring(comma + 2);
+            centroid = latcen + "," + lngcen;
+        }
         shareAdapter.notifyDataSetChanged();
         shareList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
