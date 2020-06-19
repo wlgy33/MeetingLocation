@@ -97,7 +97,8 @@
             android:hint="주소 입력"
             android:id="@+id/friend_address"
             android:maxLines="1"
-
+            android:ellipsize="end"
+            android:inputType="text"
             android:onClick="startAutocompleteActivity">
 
         </EditText>

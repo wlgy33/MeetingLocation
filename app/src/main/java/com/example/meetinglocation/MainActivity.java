@@ -658,15 +658,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 startActivity(intent);
             }
         });
-        /*detailed_path = (TextView) findViewById(R.id.path);
-        detailed_path.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, DetailRouteInfo.class);
-                intent.putExtra("list", adapter1.items);
-                startActivity(intent);
-            }
-        });*/
+
         share_with = (TextView) findViewById(R.id.share);
         share_with.setClickable(true);
         //공유 버튼 구현
