@@ -26,7 +26,7 @@
                 android:gravity="center"
                 android:text="나"
                 android:textColor="#46B26E"
-                android:textSize="25sp" />
+                android:textSize="18sp" />
 
             <TextView
                 android:id="@+id/textView"
@@ -35,7 +35,7 @@
                 android:layout_marginLeft="10dp"
                 android:gravity="center"
                 android:text="출발지1"
-                android:textSize="20sp" />
+                android:textSize="15sp" />
 
         </LinearLayout>
 

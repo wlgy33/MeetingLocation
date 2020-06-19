@@ -55,7 +55,7 @@
             android:layout_weight="1"
         />
         <EditText
-            android:layout_width="wrap_content"
+            android:layout_width="160dp"
             android:layout_height="wrap_content"
             android:hint="이름 입력"
             android:layout_gravity="center"
@@ -89,13 +89,15 @@
 
         />
         <EditText
-            android:layout_width="wrap_content"
+            android:layout_width="160dp"
             android:layout_height="wrap_content"
             android:layout_weight="2"
             android:layout_gravity="center"
             android:gravity="center"
             android:hint="주소 입력"
             android:id="@+id/friend_address"
+            android:maxLines="1"
+
             android:onClick="startAutocompleteActivity">
 
         </EditText>

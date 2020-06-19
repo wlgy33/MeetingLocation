@@ -23,7 +23,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="출발지"
-                android:textSize="25sp"
+                android:textSize="18sp"
                 android:textColor="#707070"/>
 
             <TextView
@@ -36,10 +36,7 @@
 
         </LinearLayout>
 
-        <ImageButton
-            android:layout_width="200px"
-            android:layout_height="200px"
-            android:src="@drawable/ic_place_black_24dp"/>
+
 
     </LinearLayout>
 
